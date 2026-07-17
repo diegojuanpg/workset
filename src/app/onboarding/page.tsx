@@ -29,15 +29,22 @@ export default async function OnboardingPage() {
     <div className="flex min-h-dvh flex-col">
       <AuthHeader />
       <main className="flex flex-1 flex-col items-center justify-center p-6 pb-24">
-        <div className="flex w-full max-w-sm flex-col gap-6">
+        <div className="flex w-full max-w-sm flex-col gap-8">
           <div className="flex flex-col gap-2">
-            <h1 className="text-heading-24 text-foreground">Welcome to Workset</h1>
-            <p className="text-copy-14 text-muted-foreground">
+            <h1 className="text-center text-heading-32 text-foreground">
+              Welcome to Workset
+            </h1>
+            <p className="text-center text-copy-16 text-muted-foreground">
               A couple of details before you get started.
             </p>
           </div>
           <OnboardingForm
             generatedAvatar={generatedAvatarDataUri(user.id)}
+            suggestedDisplayName={
+              typeof user.user_metadata?.full_name === "string"
+                ? user.user_metadata.full_name
+                : ""
+            }
             suggestedUsername={suggestUsername(user.email ?? "")}
           />
         </div>
