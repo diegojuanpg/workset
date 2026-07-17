@@ -12,7 +12,7 @@ export default function LoginPage() {
       <AuthHeader action={{ label: "Sign Up", href: "/signup" }} />
       <main className="flex flex-1 flex-col items-center justify-center p-6">
         <div className="flex w-full max-w-xs flex-col items-center gap-6">
-          <div className="flex size-20 items-center justify-center rounded-full bg-[var(--ds-gray-100)]">
+          <div className="flex size-20 items-center justify-center rounded-full border border-border bg-[var(--ds-gray-100)]">
             <WorksetMark className="h-8 w-auto text-foreground" />
           </div>
           <AuthForm mode="login" />
