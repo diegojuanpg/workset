@@ -81,7 +81,9 @@ create trigger profiles_updated_at
   for each row execute function public.set_updated_at();
 
 -- Grants (RLS still filters rows).
-grant select, update (username, display_name, avatar_url) on public.profiles to authenticated;
+-- update includes id: supabase-js upsert puts every column in ON CONFLICT SET;
+-- RLS with check still blocks changing it to another user's id.
+grant select, update (id, username, display_name, avatar_url) on public.profiles to authenticated;
 grant insert (id, username, display_name, avatar_url) on public.profiles to authenticated;
 grant select on public.reserved_usernames to anon, authenticated;
 grant execute on function public.username_available(text) to anon, authenticated;
