@@ -1,5 +1,31 @@
 import * as React from "react";
 
+// Workset pixel-W mark (from Branding.md). Renders in currentColor.
+export function WorksetMark({
+  className,
+  ...props
+}: { className?: string } & React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="24 35 72 50"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+      {...props}
+    >
+      <rect x="25.6" y="36.8" width="12" height="12" rx="1.2" />
+      <rect x="48" y="37" width="18" height="12" rx="1.2" />
+      <rect x="43" y="48.5" width="18" height="12" rx="1.2" />
+      <rect x="37" y="60" width="18" height="12" rx="1.2" />
+      <rect x="31.5" y="71" width="17.5" height="12" rx="1.2" />
+      <rect x="76.5" y="37" width="17.5" height="12" rx="1.2" />
+      <rect x="71" y="48.5" width="18" height="12" rx="1.2" />
+      <rect x="65" y="60" width="18" height="12" rx="1.2" />
+      <rect x="59.5" y="71" width="17.5" height="12" rx="1.2" />
+    </svg>
+  );
+}
+
 export function LogoGoogle({
   className,
   ...props

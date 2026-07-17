@@ -18,6 +18,8 @@ export function AuthForm({ mode }: AuthFormProps) {
   const supabase = React.useMemo(() => createClient(), []);
 
   const [step, setStep] = React.useState<"email" | "code">("email");
+  // Vercel-style signup: providers first, email form behind the link.
+  const [showEmail, setShowEmail] = React.useState(mode === "login");
   const [email, setEmail] = React.useState("");
   const [code, setCode] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
@@ -26,9 +28,9 @@ export function AuthForm({ mode }: AuthFormProps) {
 
   React.useEffect(() => {
     if (cooldown <= 0) return;
-    const t = setInterval(() => setCooldown((s) => s - 1), 1000);
-    return () => clearInterval(t);
-  }, [cooldown > 0]);
+    const t = setTimeout(() => setCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
 
   async function sendCode() {
     setLoading(true);
@@ -96,7 +98,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           if (!loading && code.length === 6) verifyCode();
         }}
       >
-        <p className="text-copy-14 text-muted-foreground">
+        <p className="text-center text-copy-14 text-muted-foreground">
           We sent a 6-digit code to{" "}
           <span className="text-foreground">{email}</span>. It expires in 5
           minutes.
@@ -149,45 +151,73 @@ export function AuthForm({ mode }: AuthFormProps) {
     );
   }
 
+  const emailForm = (
+    <form
+      className="flex flex-col gap-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!loading && email) sendCode();
+      }}
+    >
+      <Input
+        aria-label="Email address"
+        autoComplete="email"
+        autoFocus={mode === "login"}
+        error={error ?? undefined}
+        onChange={(e) => setEmail(e.target.value.trim())}
+        placeholder="Email Address"
+        required
+        size="large"
+        type="email"
+        value={email}
+      />
+      <Button disabled={!email} loading={loading} size="lg" type="submit">
+        Continue with Email
+      </Button>
+    </form>
+  );
+
+  const googleButton = (
+    <Button
+      onClick={signInWithGoogle}
+      prefix={<LogoGoogle />}
+      size="lg"
+      type="button"
+      variant="secondary"
+    >
+      Continue with Google
+    </Button>
+  );
+
+  if (mode === "signup") {
+    return (
+      <div className="flex w-full flex-col gap-4">
+        {googleButton}
+        {showEmail ? (
+          emailForm
+        ) : (
+          <button
+            className="mx-auto text-copy-14 text-[var(--ds-blue-900)] hover:underline"
+            onClick={() => setShowEmail(true)}
+            type="button"
+          >
+            Continue with Email →
+          </button>
+        )}
+        {error && !showEmail ? (
+          <p className="text-center text-copy-13 text-[var(--ds-red-900)]">
+            {error}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className="flex w-full flex-col gap-4">
-      <form
-        className="flex flex-col gap-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!loading && email) sendCode();
-        }}
-      >
-        <Input
-          aria-label="Email address"
-          autoComplete="email"
-          autoFocus
-          error={error ?? undefined}
-          onChange={(e) => setEmail(e.target.value.trim())}
-          placeholder="you@example.com"
-          required
-          size="large"
-          type="email"
-          value={email}
-        />
-        <Button disabled={!email} loading={loading} size="lg" type="submit">
-          Continue with Email
-        </Button>
-      </form>
-      <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-border" />
-        <span className="text-copy-13 text-muted-foreground">or</span>
-        <div className="h-px flex-1 bg-border" />
-      </div>
-      <Button
-        onClick={signInWithGoogle}
-        prefix={<LogoGoogle />}
-        size="lg"
-        type="button"
-        variant="secondary"
-      >
-        Continue with Google
-      </Button>
+      {emailForm}
+      <div className="h-px w-full bg-border" />
+      {googleButton}
     </div>
   );
 }

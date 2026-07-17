@@ -21,7 +21,7 @@ insert into public.reserved_usernames (name) values
   ('coach'), ('athlete'), ('athletes'), ('admin'), ('dashboard'), ('auth'),
   ('app'), ('account'), ('profile'), ('help'), ('support'), ('docs'),
   ('about'), ('pricing'), ('terms'), ('privacy'), ('new'), ('home'),
-  ('tensor'), ('team'), ('teams'), ('workout'), ('workouts'), ('plan'),
+  ('workset'), ('team'), ('teams'), ('workout'), ('workouts'), ('plan'),
   ('plans'), ('exercise'), ('exercises'), ('invite'), ('invites');
 
 create or replace function public.username_is_reserved(candidate text)

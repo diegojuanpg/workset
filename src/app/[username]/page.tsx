@@ -5,7 +5,7 @@ import { generatedAvatarDataUri } from "@/lib/avatar";
 import { signOut } from "@/lib/auth/actions";
 import { Button } from "@/components/ui/button";
 
-export const metadata: Metadata = { title: "Dashboard — Tensor" };
+export const metadata: Metadata = { title: "Dashboard — Workset" };
 
 interface UsernamePageProps {
   params: Promise<{ username: string }>;
@@ -63,7 +63,7 @@ export default async function UsernamePage({ params }: UsernamePageProps) {
           {profile.display_name}
         </h1>
         <p className="text-copy-14 text-muted-foreground">
-          tensor.app/{profile.username}
+          workset.app/{profile.username}
         </p>
       </div>
       <p className="text-copy-14 text-muted-foreground">

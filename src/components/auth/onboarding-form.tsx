@@ -66,7 +66,7 @@ export function OnboardingForm({
             setUsername(e.target.value.toLowerCase());
             setUsernameError(null);
           }}
-          prefix="tensor.app/"
+          prefix="workset.app/"
           required
           value={username}
         />

@@ -1,4 +1,4 @@
-# Tensor
+# Workset
 
 Training planner for coaches and athletes. Full architecture spec: `/home/diego/Projects/eva01/App Architecture and Organization.md` — read it before making stack or structure decisions.
 

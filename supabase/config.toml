@@ -250,11 +250,11 @@ otp_expiry = 300
 
 # OTP code templates (no magic links)
 [auth.email.template.confirmation]
-subject = "Your Tensor verification code"
+subject = "Your Workset verification code"
 content_path = "./supabase/templates/otp.html"
 
 [auth.email.template.magic_link]
-subject = "Your Tensor login code"
+subject = "Your Workset login code"
 content_path = "./supabase/templates/otp.html"
 
 # Uncomment to customize notification email template

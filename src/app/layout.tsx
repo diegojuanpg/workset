@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Tensor",
+  title: "Workset",
   description: "Training planner for coaches and athletes",
 };
 
