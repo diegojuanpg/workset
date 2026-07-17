@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { LogoGoogle } from "@/components/icons";
+import { ArrowRightIcon, LogoGoogle } from "@/components/icons";
 
 const RESEND_COOLDOWN_SECONDS = 60;
 
@@ -197,11 +197,12 @@ export function AuthForm({ mode }: AuthFormProps) {
           emailForm
         ) : (
           <button
-            className="mx-auto text-copy-16 text-[var(--ds-blue-900)] hover:underline"
+            className="mx-auto inline-flex items-center gap-1.5 text-copy-16 text-[var(--ds-blue-900)] hover:underline"
             onClick={() => setShowEmail(true)}
             type="button"
           >
-            Continue with Email →
+            Continue with Email
+            <ArrowRightIcon className="size-4" />
           </button>
         )}
         {error && !showEmail ? (
