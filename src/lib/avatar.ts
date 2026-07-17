@@ -22,8 +22,11 @@ function hash(seed: string): number {
 
 export function generatedAvatarDataUri(seed: string): string {
   const h = hash(seed);
-  const c1 = PALETTE[h % PALETTE.length];
-  const c2 = PALETTE[(h >> 3) % PALETTE.length];
+  const i1 = h % PALETTE.length;
+  // Always two distinct palette colors so the gradient reads on any background.
+  const i2 = (i1 + 1 + ((h >> 3) % (PALETTE.length - 1))) % PALETTE.length;
+  const c1 = PALETTE[i1];
+  const c2 = PALETTE[i2];
   const angle = h % 360;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><defs><linearGradient id="g" gradientTransform="rotate(${angle} .5 .5)"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient></defs><rect width="80" height="80" fill="url(#g)"/></svg>`;
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;

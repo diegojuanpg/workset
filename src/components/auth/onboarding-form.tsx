@@ -4,7 +4,7 @@ import * as React from "react";
 import { useActionState } from "react";
 import { completeOnboarding, type OnboardingState } from "@/app/onboarding/actions";
 import { createClient } from "@/lib/supabase/client";
-import { isValidUsername, USERNAME_RULES } from "@/lib/auth/username";
+import { isValidUsername } from "@/lib/auth/username";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
 import { Note } from "@/components/ui/note";
@@ -77,7 +77,7 @@ export function OnboardingForm({
 
   const usernameError =
     status === "invalid"
-      ? USERNAME_RULES
+      ? "Only lowercase letters, numbers and dashes — must start and end with a letter or number."
       : status === "taken"
         ? "That username is already taken."
         : undefined;
@@ -147,10 +147,12 @@ export function OnboardingForm({
           suffixStyling={false}
           value={username}
         />
-        <p className="text-copy-13 text-muted-foreground">
-          Lowercase letters, numbers and dashes. You can change it later in
-          settings.
-        </p>
+        {usernameError ? null : (
+          <p className="text-copy-13 text-muted-foreground">
+            Lowercase letters, numbers and dashes. You can change it later in
+            settings.
+          </p>
+        )}
       </div>
 
       {state.error ? (
