@@ -250,11 +250,11 @@ otp_expiry = 300
 
 # OTP code templates (no magic links)
 [auth.email.template.confirmation]
-subject = "Your Workset verification code"
+subject = "{{ .Token }} is your Workset sign up code"
 content_path = "./supabase/templates/otp.html"
 
 [auth.email.template.magic_link]
-subject = "Your Workset login code"
+subject = "{{ .Token }} is your Workset log in code"
 content_path = "./supabase/templates/otp.html"
 
 # Uncomment to customize notification email template
