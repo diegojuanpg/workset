@@ -82,6 +82,7 @@ create trigger profiles_updated_at
 
 -- Grants (RLS still filters rows).
 grant select, update (username, display_name, avatar_url) on public.profiles to authenticated;
+grant insert (id, username, display_name, avatar_url) on public.profiles to authenticated;
 grant select on public.reserved_usernames to anon, authenticated;
 grant execute on function public.username_available(text) to anon, authenticated;
 grant execute on function public.username_is_reserved(text) to anon, authenticated;
@@ -96,6 +97,10 @@ create policy "own profile read" on public.profiles
 create policy "own profile update" on public.profiles
   for update using ((select auth.uid()) = id)
   with check ((select auth.uid()) = id);
+
+-- Self-heal: onboarding upserts, covering rows lost to manual deletes.
+create policy "own profile insert" on public.profiles
+  for insert with check ((select auth.uid()) = id);
 
 create policy "reserved readable" on public.reserved_usernames
   for select using (true);

@@ -47,14 +47,12 @@ export async function completeOnboarding(
       .data.publicUrl;
   }
 
-  const { error: updateError } = await supabase
-    .from("profiles")
-    .update({
-      display_name: displayName,
-      username,
-      ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
-    })
-    .eq("id", user.id);
+  const { error: updateError } = await supabase.from("profiles").upsert({
+    id: user.id,
+    display_name: displayName,
+    username,
+    ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
+  });
 
   if (updateError) {
     if (updateError.code === "23505") {
