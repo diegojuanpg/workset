@@ -35,7 +35,7 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isAuthPath = AUTH_PATHS.some((p) => pathname.startsWith(p));
 
-  if (!user && !isAuthPath && !pathname.startsWith("/auth")) {
+  if (!user && !isAuthPath && !pathname.startsWith("/auth") && !pathname.startsWith("/_next")) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
