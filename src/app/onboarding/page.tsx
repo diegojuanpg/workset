@@ -27,7 +27,7 @@ export default async function OnboardingPage() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <AuthHeader />
+      <AuthHeader showSignOut />
       <main className="flex flex-1 flex-col items-center justify-center p-6 pb-24">
         <div className="flex w-full max-w-sm flex-col gap-8">
           <div className="flex flex-col gap-2">
