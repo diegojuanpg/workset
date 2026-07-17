@@ -10,7 +10,7 @@ export default function SignupPage() {
     <div className="flex min-h-dvh flex-col">
       <AuthHeader action={{ label: "Log In", href: "/login" }} />
       <main className="flex flex-1 flex-col items-center justify-center p-6 pb-24">
-        <div className="flex w-full max-w-md flex-col gap-8 rounded-xl border border-border p-8 md:p-12">
+        <div className="flex w-full max-w-md flex-col gap-8 rounded-xl border border-border bg-[var(--ds-background-100)] p-8 md:p-12">
           <h1 className="text-center text-heading-32 text-foreground">
             Your first plan
             <br />
