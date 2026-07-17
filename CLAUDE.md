@@ -23,6 +23,10 @@ Training planner for coaches and athletes. Full architecture spec: `/home/diego/
 - Typography via `text-heading-*` / `text-copy-*` / `text-label-*` / `text-button-*` utilities. Surfaces via `material-*` utilities.
 - Geist icons from the skill's `assets/components/icons.tsx` (grep by name — 9k lines, never read whole), not lucide.
 
+## Project map
+
+- `project-index.md` is the living map of the codebase. Update it in the same commit that adds or changes a feature — map level only (where things live + how flows work), never duplicated code.
+
 ## Code style
 
 - Named exports, PascalCase components, camelCase utils, 2-space indent
