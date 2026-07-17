@@ -24,7 +24,8 @@ export function generatedAvatarDataUri(seed: string): string {
   const h = hash(seed);
   const i1 = h % PALETTE.length;
   // Always two distinct palette colors so the gradient reads on any background.
-  const i2 = (i1 + 1 + ((h >> 3) % (PALETTE.length - 1))) % PALETTE.length;
+  // >>> keeps the shift unsigned — h >= 2^31 would go negative with >> and index out of the palette.
+  const i2 = (i1 + 1 + ((h >>> 3) % (PALETTE.length - 1))) % PALETTE.length;
   const c1 = PALETTE[i1];
   const c2 = PALETTE[i2];
   const angle = h % 360;
