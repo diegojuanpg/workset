@@ -197,7 +197,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           emailForm
         ) : (
           <button
-            className="mx-auto text-copy-14 text-[var(--ds-blue-900)] hover:underline"
+            className="mx-auto text-copy-16 text-[var(--ds-blue-900)] hover:underline"
             onClick={() => setShowEmail(true)}
             type="button"
           >

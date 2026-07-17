@@ -15,7 +15,7 @@ export default function LoginPage() {
             Log in to Workset
           </h1>
           <AuthForm mode="login" />
-          <p className="text-center text-copy-14 text-muted-foreground">
+          <p className="text-center text-copy-16 text-foreground">
             Don&apos;t have an account?{" "}
             <Link className="text-[var(--ds-blue-900)] hover:underline" href="/signup">
               Sign Up
