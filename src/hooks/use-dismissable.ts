@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import * as React from "react"
+import * as React from "react";
 
 /**
  * Shared dismiss behavior for popover-like surfaces: closes on outside
@@ -11,21 +11,27 @@ import * as React from "react"
 export function useDismissable(
   ref: React.RefObject<HTMLElement | null>,
   open: boolean,
-  onClose: () => void
+  onClose: () => void,
+  /** A second subtree that also counts as "inside" — for surfaces rendered through a
+   *  portal, whose panel is no longer a descendant of the trigger. */
+  extraRef?: React.RefObject<HTMLElement | null>,
 ) {
   React.useEffect(() => {
-    if (!open) return
+    if (!open) return;
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
-    }
+      const target = e.target as Node;
+      const inside =
+        ref.current?.contains(target) || extraRef?.current?.contains(target);
+      if (!inside) onClose();
+    };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose()
-    }
-    document.addEventListener("mousedown", onDoc)
-    document.addEventListener("keydown", onKey)
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onDoc)
-      document.removeEventListener("keydown", onKey)
-    }
-  }, [open, ref, onClose])
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open, ref, onClose, extraRef]);
 }

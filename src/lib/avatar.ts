@@ -44,7 +44,16 @@ function mix(c1: string, c2: string, t: number): string {
   return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
 }
 
+// Same seed always yields the same URI, and every render of a roster row asks for it again —
+// 36 rects, a string build and an encodeURIComponent each time. Keyed by athlete/user id, so the
+// map is bounded by the roster.
+// ponytail: unbounded Map, swap for an LRU if a seed space ever outgrows one coach's roster.
+const cache = new Map<string, string>();
+
 export function generatedAvatarDataUri(seed: string): string {
+  const cached = cache.get(seed);
+  if (cached !== undefined) return cached;
+
   const h = hash(seed);
   const i1 = h % PALETTE.length;
   // Always two distinct palette colors so the gradient reads on any background.
@@ -68,5 +77,7 @@ export function generatedAvatarDataUri(seed: string): string {
 
   const size = GRID * CELL;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" shape-rendering="crispEdges">${rects}</svg>`;
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  const uri = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  cache.set(seed, uri);
+  return uri;
 }

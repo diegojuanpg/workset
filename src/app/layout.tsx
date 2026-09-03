@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { Toaster } from "@/components/ui/toast";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -32,6 +33,9 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {children}
+          {/* One mount for the whole app: sonner renders a single region and every toast
+              queues into it, so nothing has to thread a provider through the routes. */}
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

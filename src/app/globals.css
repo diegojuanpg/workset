@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "tw-animate-css";
 @import "./geist-tokens.css";
 @import "./geist-typography.css";
 @import "./geist-materials.css";
@@ -74,6 +73,45 @@
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 .animate-dots-menu-in { animation: dots-menu-scale-in 100ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+/* Upward-opening variant (panel footer user menu). */
+@keyframes menu-scale-in-up {
+  from { opacity: 0; transform: scale(0.96) translateY(4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.animate-menu-in-up { animation: menu-scale-in-up 100ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+/* Modal enter (the skill's animate-in utilities aren't in this build). */
+@keyframes overlay-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-overlay-in { animation: overlay-fade-in 150ms ease forwards; }
+@keyframes modal-scale-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+.animate-modal-in { animation: modal-scale-in 150ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+/* Find overlay (CDP-measured from Vercel's Find): the panel morph runs via
+   WAAPI with exact trigger-rect scales; list fades in late; icon/input slide. */
+@keyframes find-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-find-backdrop { animation: find-fade-in 300ms ease; }
+@keyframes find-esc-in {
+  from { opacity: 0; transform: translateX(-20%) scale(0.95); }
+}
+.animate-find-esc { animation: find-esc-in 250ms ease 50ms backwards; }
+@keyframes find-icon-in {
+  from { transform: translateX(-2px); }
+}
+.animate-find-icon { animation: find-icon-in 150ms ease; }
+@keyframes find-input-in {
+  from { transform: translateX(-8px); }
+}
+.animate-find-input { animation: find-input-in 150ms ease; }
 
 @keyframes loading-blink {
   0% {
@@ -179,4 +217,29 @@
   border: none !important;
   box-shadow: none !important;
   opacity: 1 !important;
+}
+/* The soft halo a focused field draws outside its 1px border. Geist ships it as a raw rgba
+   per theme, which meant every input hardcoded black-at-16% plus a `dark:` twin for
+   white-at-24% — the one pattern this project forbids. As a token it resolves per theme
+   and the components stop knowing which theme they are in. */
+:root {
+  --ds-focus-halo: rgba(0, 0, 0, 0.16);
+}
+
+.dark {
+  --ds-focus-halo: rgba(255, 255, 255, 0.24);
+}
+
+/* Reduced motion: the UI only fades and tints, so the honest alternative is to arrive at the
+   end state at once rather than to keep a token animation nobody asked for. Transforms driven
+   by a pointer are exempt — they follow the finger, they are not an animation. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

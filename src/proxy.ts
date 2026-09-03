@@ -32,12 +32,30 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // A Server Action posts to the page it was called from, and expects an RSC action result
+  // back. Answering with a redirect hands the client an HTML document instead — which is the
+  // "An unexpected response was received from the server." the browser reports, with the
+  // action never running. Every action validates its own auth and redirects through
+  // next/navigation, which the client does understand, so they are let past the two redirects
+  // below. The getUser() above has already refreshed the session onto `response`.
+  if (request.headers.get("next-action")) return response;
+
   const { pathname } = request.nextUrl;
   const isAuthPath = AUTH_PATHS.some((p) => pathname.startsWith(p));
+  // /join = invite links: the route handler captures the token for signed-out
+  // visitors (sets a cookie, sends to signup), so it must not be forced to login.
+  const isPublicPath = pathname.startsWith("/home") || pathname.startsWith("/join");
 
-  if (!user && !isAuthPath && !pathname.startsWith("/auth") && !pathname.startsWith("/_next")) {
+  if (
+    !user &&
+    !isAuthPath &&
+    !isPublicPath &&
+    !pathname.startsWith("/auth") &&
+    !pathname.startsWith("/_next")
+  ) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    // Root routes to the landing; anything else asks for login.
+    url.pathname = pathname === "/" ? "/home" : "/login";
     return NextResponse.redirect(url);
   }
 

@@ -34,12 +34,337 @@ export type Database = {
   }
   public: {
     Tables: {
+      athlete_profiles: {
+        Row: {
+          birth_date: string
+          created_at: string
+          height_cm: number
+          phone: string | null
+          profile_id: string
+          sex: string
+          updated_at: string
+        }
+        Insert: {
+          birth_date: string
+          created_at?: string
+          height_cm: number
+          phone?: string | null
+          profile_id: string
+          sex: string
+          updated_at?: string
+        }
+        Update: {
+          birth_date?: string
+          created_at?: string
+          height_cm?: number
+          phone?: string | null
+          profile_id?: string
+          sex?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athlete_profiles_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      athletes: {
+        Row: {
+          athlete_id: string | null
+          claimed_at: string | null
+          coach_id: string
+          created_at: string
+          first_name: string
+          id: string
+          invite_expires_at: string
+          invite_status: string
+          invite_token: string
+          label: string | null
+          last_name: string | null
+          planned: boolean
+          updated_at: string
+        }
+        Insert: {
+          athlete_id?: string | null
+          claimed_at?: string | null
+          coach_id: string
+          created_at?: string
+          first_name: string
+          id?: string
+          invite_expires_at?: string
+          invite_status?: string
+          invite_token?: string
+          label?: string | null
+          last_name?: string | null
+          planned?: boolean
+          updated_at?: string
+        }
+        Update: {
+          athlete_id?: string | null
+          claimed_at?: string | null
+          coach_id?: string
+          created_at?: string
+          first_name?: string
+          id?: string
+          invite_expires_at?: string
+          invite_status?: string
+          invite_token?: string
+          label?: string | null
+          last_name?: string | null
+          planned?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athletes_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "athletes_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competition_athletes: {
+        Row: {
+          age_category: string | null
+          athlete_id: string
+          competes_on: string | null
+          competition_id: string
+          created_at: string
+          weight_class: string | null
+        }
+        Insert: {
+          age_category?: string | null
+          athlete_id: string
+          competes_on?: string | null
+          competition_id: string
+          created_at?: string
+          weight_class?: string | null
+        }
+        Update: {
+          age_category?: string | null
+          athlete_id?: string
+          competes_on?: string | null
+          competition_id?: string
+          created_at?: string
+          weight_class?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competition_athletes_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competition_athletes_competition_id_fkey"
+            columns: ["competition_id"]
+            isOneToOne: false
+            referencedRelation: "competitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competitions: {
+        Row: {
+          age_categories: string[]
+          coach_id: string
+          created_at: string
+          ends_on: string
+          federation: string
+          id: string
+          location: string | null
+          name: string
+          starts_on: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          age_categories?: string[]
+          coach_id: string
+          created_at?: string
+          ends_on: string
+          federation: string
+          id?: string
+          location?: string | null
+          name: string
+          starts_on: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          age_categories?: string[]
+          coach_id?: string
+          created_at?: string
+          ends_on?: string
+          federation?: string
+          id?: string
+          location?: string | null
+          name?: string
+          starts_on?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competitions_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cycle_types: {
+        Row: {
+          coach_id: string
+          color: string
+          created_at: string
+          description: string
+          id: string
+          name: string
+          tier: string
+          updated_at: string
+        }
+        Insert: {
+          coach_id: string
+          color?: string
+          created_at?: string
+          description?: string
+          id?: string
+          name: string
+          tier: string
+          updated_at?: string
+        }
+        Update: {
+          coach_id?: string
+          color?: string
+          created_at?: string
+          description?: string
+          id?: string
+          name?: string
+          tier?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cycle_types_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      macrocycles: {
+        Row: {
+          athlete_id: string
+          created_at: string
+          id: string
+          name: string
+          type_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          athlete_id: string
+          created_at?: string
+          id?: string
+          name: string
+          type_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          athlete_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          type_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "macrocycles_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "macrocycles_type_id_fkey"
+            columns: ["type_id"]
+            isOneToOne: false
+            referencedRelation: "cycle_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      microcycles: {
+        Row: {
+          block_id: string
+          created_at: string
+          id: string
+          label: string
+          starts_on: string
+          type_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          block_id: string
+          created_at?: string
+          id?: string
+          label: string
+          starts_on: string
+          type_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          block_id?: string
+          created_at?: string
+          id?: string
+          label?: string
+          starts_on?: string
+          type_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "microcycles_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "training_blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "microcycles_type_id_fkey"
+            columns: ["type_id"]
+            isOneToOne: false
+            referencedRelation: "cycle_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
           created_at: string
           display_name: string | null
+          first_name: string | null
           id: string
+          is_coach: boolean
+          last_name: string | null
+          unit_preference: string
           updated_at: string
           username: string | null
         }
@@ -47,7 +372,11 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
+          first_name?: string | null
           id: string
+          is_coach?: boolean
+          last_name?: string | null
+          unit_preference?: string
           updated_at?: string
           username?: string | null
         }
@@ -55,7 +384,11 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
+          first_name?: string | null
           id?: string
+          is_coach?: boolean
+          last_name?: string | null
+          unit_preference?: string
           updated_at?: string
           username?: string | null
         }
@@ -73,11 +406,72 @@ export type Database = {
         }
         Relationships: []
       }
+      training_blocks: {
+        Row: {
+          athlete_id: string
+          created_at: string
+          ends_on: string
+          id: string
+          macro_id: string | null
+          name: string
+          starts_on: string
+          type_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          athlete_id: string
+          created_at?: string
+          ends_on: string
+          id?: string
+          macro_id?: string | null
+          name: string
+          starts_on: string
+          type_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          athlete_id?: string
+          created_at?: string
+          ends_on?: string
+          id?: string
+          macro_id?: string | null
+          name?: string
+          starts_on?: string
+          type_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_blocks_athlete_id_fkey"
+            columns: ["athlete_id"]
+            isOneToOne: false
+            referencedRelation: "athletes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_blocks_macro_fkey"
+            columns: ["macro_id", "athlete_id"]
+            isOneToOne: false
+            referencedRelation: "macrocycles"
+            referencedColumns: ["id", "athlete_id"]
+          },
+          {
+            foreignKeyName: "training_blocks_type_id_fkey"
+            columns: ["type_id"]
+            isOneToOne: false
+            referencedRelation: "cycle_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      claim_invitation: { Args: { p_token: string }; Returns: Json }
+      reorder_training_blocks: { Args: { ids: string[] }; Returns: undefined }
+      seed_default_cycle_types: { Args: { coach: string }; Returns: undefined }
       username_available: { Args: { candidate: string }; Returns: boolean }
       username_is_reserved: { Args: { candidate: string }; Returns: boolean }
     }

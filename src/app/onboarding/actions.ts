@@ -51,6 +51,7 @@ export async function completeOnboarding(
     id: user.id,
     display_name: displayName,
     username,
+    is_coach: true,
     ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
   });
 
