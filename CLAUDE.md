@@ -26,7 +26,7 @@ Training planner for coaches and athletes. Full architecture spec: `/home/diego/
 
 ## Project map
 
-- `project-index.md` is the living map of the codebase. Update it in the same commit that adds or changes a feature — map level only (where things live + how flows work), never duplicated code.
+- `docs/project-index.md` is the living map of the codebase. Update it in the same commit that adds or changes a feature — map level only (where things live + how flows work), never duplicated code.
 
 ## Code style
 
