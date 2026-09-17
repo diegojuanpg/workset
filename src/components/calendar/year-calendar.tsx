@@ -80,7 +80,7 @@ type Bar = TrainingBlock & { start: number; span: number; clipped: boolean };
 const WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
 /** What the single letters stand for. The axis has two Ts and two Ss, so the letter alone is
  *  not a name a screen reader can use. */
-export const WEEKDAY_NAMES = [
+const WEEKDAY_NAMES = [
   "Monday",
   "Tuesday",
   "Wednesday",

@@ -1,10 +1,7 @@
 "use client";
 
 import * as React from "react";
-import {
-  WEEKDAY_NAMES,
-  YearCalendar,
-} from "@/components/calendar/year-calendar";
+import { YearCalendar } from "@/components/calendar/year-calendar";
 import type {
   Macrocycle,
   Microcycle,
@@ -18,9 +15,13 @@ import {
   toISODate,
   weekCount,
 } from "@/lib/blocks/weeks";
-import { ChevronDownIcon } from "@/components/icons";
+import { ChevronDownIcon, PlusIcon } from "@/components/icons";
 import { DotsMenu } from "@/components/ui/dots-menu";
 import type { CycleTier, CycleType } from "@/lib/cycles/types";
+
+/** A week holds at most seven sessions — one a day is where the calendar itself runs out.
+ *  At seven the offer goes: there is no eighth day to offer. */
+const MAX_DAYS = 7;
 
 interface PlanningViewProps {
   athleteId: string;
@@ -43,6 +44,10 @@ interface PlanningViewProps {
 export function PlanningView({ blocks, macros, ...rest }: PlanningViewProps) {
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [week, setWeek] = React.useState(1);
+  /** How many sessions each week of each block has, keyed by the two together. Held here and
+   *  nowhere else for now: the shape of a training day isn't settled, and a schema is the
+   *  expensive half to change. Reloading the page empties it. */
+  const [days, setDays] = React.useState<Record<string, number>>({});
 
   /** Opens on the block the coach is in. Resolved after hydration, like every other "today"
    *  in the app: the server and the browser can sit on different calendar days. */
@@ -66,6 +71,8 @@ export function PlanningView({ blocks, macros, ...rest }: PlanningViewProps) {
     ? (weekCount(fromISODate(block.startsOn), fromISODate(block.endsOn)) ?? 1)
     : 1;
   const current = Math.min(week, weeks);
+  const dayKey = `${block?.id}|${current}`;
+  const count = days[dayKey] ?? 0;
 
   return (
     <>
@@ -126,21 +133,47 @@ export function PlanningView({ blocks, macros, ...rest }: PlanningViewProps) {
                   onSelect: () => setWeek(i + 1),
                 }))}
               />
-              {/* Full day names at reading size and weight read as a sentence broken into
-                  seven pieces. These are labels for the columns under them, so they take the
-                  shape Geist's own calendar gives a weekday head — 10px, medium, uppercase,
-                  wide tracking (src/components/ui/calendar.tsx) — at gray-900 rather than its
-                  gray-700, the floor the year calendar already settled on for 12px and under.
-                  Stacked below the fold: seven columns on a phone is four rems each. */}
-              <div className="grid gap-y-4 sm:grid-cols-7 sm:gap-y-0">
-                {WEEKDAY_NAMES.map((name) => (
+              {/* The week's sessions, in order, and one offer at the end of the run. No
+                  weekday columns: a training week is a list of sessions, not seven slots with
+                  gaps in them — which day of the calendar each one lands on is the year
+                  calendar's job. Day 1 is the first session, and the offer is always the next
+                  number, so the row reads the way a coach counts.
+
+                  Centred, at a fixed card width rather than a share of the row: a week with
+                  two sessions and a week with six draw the same card, and the run grows out
+                  from the middle instead of hanging off the left edge with five columns of
+                  nothing beside it. They wrap when the row runs out. */}
+              <div className="flex flex-wrap justify-center gap-4">
+                {Array.from({ length: count }, (_, i) => (
                   <div
-                    key={name}
-                    className="truncate border-b border-[var(--ds-gray-alpha-400)] px-2 pb-2 text-center text-[10px] font-medium tracking-wider text-[var(--ds-gray-900)] uppercase"
+                    key={i}
+                    // Sunk to background-200, the way a modal sinks its body inside its own
+                    // surface: this card sits on the week's card, and two things on
+                    // background-100 separated by a hairline read as one surface with a line
+                    // drawn on it rather than as an object on a panel.
+                    className="flex min-h-32 w-44 flex-col rounded-xl border border-[var(--ds-gray-alpha-400)] bg-[var(--ds-background-200)] p-4"
                   >
-                    {name}
+                    <p className="border-b border-[var(--ds-gray-alpha-400)] pb-2 text-center text-label-13 font-medium text-[var(--ds-gray-1000)]">
+                      Day {i + 1}
+                    </p>
                   </div>
                 ))}
+                {count < MAX_DAYS && (
+                  // The offer, in the plan's own language for "something could go here":
+                  // dashed, unfilled, quiet until the pointer arrives. Tailwind's dashed
+                  // border rather than the calendar's DashedBox — that one fits its dashes to
+                  // a known width, and this column is fluid.
+                  <button
+                    type="button"
+                    aria-label={`Add day ${count + 1}`}
+                    onClick={() =>
+                      setDays((d) => ({ ...d, [dayKey]: count + 1 }))
+                    }
+                    className="flex min-h-32 w-44 cursor-pointer items-center justify-center rounded-xl border border-dashed border-[var(--ds-gray-alpha-400)] text-[var(--ds-gray-700)] transition-colors outline-none hover:border-[var(--ds-gray-600)] hover:text-[var(--ds-gray-1000)] focus-visible:shadow-[var(--ds-focus-ring)]"
+                  >
+                    <PlusIcon className="size-4" />
+                  </button>
+                )}
               </div>
             </>
           ) : (

@@ -174,8 +174,12 @@ export function PanelShell({ children, athletes, ...profile }: PanelShellProps) 
       ) : null}
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-        {/* Persistent top bar — future home of section navigation. */}
-        <header className="relative flex h-12 shrink-0 items-center gap-2 border-b border-border px-3">
+        {/* Persistent top bar — future home of section navigation. Sticky, the way the side
+            panel beside it already is: it carries where you are, and a location that scrolls
+            away is a location you have to scroll back for. Opaque, so the year passes under
+            it instead of through it. `sticky` is its own positioning context, so what was
+            `relative` for the children inside it still holds. */}
+        <header className="sticky top-0 z-30 flex h-12 shrink-0 items-center gap-2 border-b border-border bg-[var(--ds-background-200)] px-3">
           {collapsed ? (
             <>
               <button
