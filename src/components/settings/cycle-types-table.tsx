@@ -17,7 +17,12 @@ import {
   type CycleTier,
   type CycleType,
 } from "@/lib/cycles/types";
-import { BLOCK_BAR, MICRO_CHIP } from "@/components/calendar/chips";
+import {
+  BLOCK_BAR,
+  MACRO_CAPTION,
+  MacroBracket,
+  MICRO_CHIP,
+} from "@/components/calendar/chips";
 import { Button } from "@/components/ui/button";
 import { DotsMenu } from "@/components/ui/dots-menu";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -36,11 +41,10 @@ import {
   TableRoot,
   TableRow,
 } from "@/components/ui/table";
-import { GripIcon, PlusIcon } from "@/components/icons";
+import { PlusIcon } from "@/components/icons";
 
-/** What each tier is called and what it draws. Macros are the odd one out: they are rendered
- *  as a grey bracket over their blocks, so there is nothing on them to tint and no preview to
- *  show — which is why `preview` is what decides whether those two columns exist at all. */
+/** What each tier is called and what it draws. Macros are the odd one out: they are drawn as
+ *  a grey caption over their blocks, so there is nothing on them to tint and no colour to pick. */
 const TIERS: Record<
   CycleTier,
   {
@@ -48,29 +52,29 @@ const TIERS: Record<
     singular: string;
     blank: string;
     footer: string;
-    preview: boolean;
+    colour: boolean;
   }
 > = {
   macro: {
     plural: "My Macrocycles",
     singular: "macrocycle",
     blank: "A macrocycle groups consecutive blocks under one name.",
-    footer: "Macrocycles are drawn as a bracket, so they carry no colour.",
-    preview: false,
+    footer: "Macrocycles are drawn as a caption over their blocks, so they carry no colour.",
+    colour: false,
   },
   meso: {
     plural: "My Mesocycles",
     singular: "mesocycle",
     blank: "A mesocycle is a block of training weeks.",
     footer: "Picking one names the block and tints its bar.",
-    preview: true,
+    colour: true,
   },
   micro: {
     plural: "My Microcycles",
     singular: "microcycle",
     blank: "A microcycle is a single week inside a block.",
     footer: "A week's chip is one column wide, so it carries the initial only.",
-    preview: true,
+    colour: true,
   },
 };
 
@@ -156,7 +160,7 @@ export function CycleTypesTable({ tier, types }: CycleTypesTableProps) {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Description</TableHead>
-                {meta.preview ? <TableHead>Preview</TableHead> : null}
+                <TableHead>Preview</TableHead>
                 {/* The row menu's column. The header is blank on screen and named for
                     screen readers, which otherwise reach a column with nothing to call it. */}
                 <TableHead className="w-10">
@@ -177,11 +181,9 @@ export function CycleTypesTable({ tier, types }: CycleTypesTableProps) {
                   <TableCell className="whitespace-normal text-[var(--ds-gray-900)]">
                     {type.description || "—"}
                   </TableCell>
-                  {meta.preview ? (
-                    <TableCell>
-                      <CyclePreview tier={tier} color={type.color} name={type.name} />
-                    </TableCell>
-                  ) : null}
+                  <TableCell>
+                    <CyclePreview tier={tier} color={type.color} name={type.name} />
+                  </TableCell>
                   <TableCell>
                     <DotsMenu
                       align="end"
@@ -229,42 +231,51 @@ function CyclePreview({
   if (tier === "micro") {
     // 34.43px is the calendar's column pitch, so the chip is the size it will really be.
     return (
-      <span className={cn(MICRO_CHIP, CHIP_CLASS[color], "inline-block w-[34px] leading-8")}>
+      <span
+        className={cn(
+          MICRO_CHIP,
+          CHIP_CLASS[color],
+          "inline-block w-[34px] leading-[22px]",
+        )}
+      >
         {microLabel(name)}
       </span>
     );
   }
-  // The calendar's bar, part for part: grip, centred bold name, week count. A four-week
-  // block at the calendar's own 34.43px column pitch, less the 2px the bar is inset on each
-  // side, is 134px — fixed, because on the calendar a bar's width is how long the block runs,
-  // and a preview fitted to its label made "Development" look like a longer block than
-  // "Deload". A long name truncates here exactly as it does there.
+  // A four-week block at the calendar's own 34.43px column pitch, less the 2px the bar is
+  // inset on each side, is 134px — fixed, because on the calendar a bar's width is how long
+  // the block runs, and a preview fitted to its label made "Development" look like a longer
+  // block than "Deload". A long name truncates here exactly as it does there.
+  if (tier === "macro") {
+    return (
+      <span aria-hidden className={cn(MACRO_CAPTION, "inline-flex w-[134px]")}>
+        <span className="min-w-0 flex-1 truncate">{name} 1</span>
+        <MacroBracket />
+      </span>
+    );
+  }
   return (
-    // aria-hidden as a whole: it is a picture of the bar, and every control it draws — the
-    // grip, the count — answers to nothing here. The name is already in the row beside it.
     <span
       aria-hidden
       className={cn(BLOCK_BAR, CHIP_CLASS[color], "inline-flex w-[134px]")}
     >
-      <span className="-ml-1.5 shrink-0 px-0.5">
-        <GripIcon className="size-3" />
-      </span>
-      <span className="min-w-0 flex-1 truncate text-center font-bold">
-        {name} 1
-      </span>
-      <span className="shrink-0 pl-1 tabular-nums">4</span>
+      <span className="min-w-0 flex-1 truncate font-medium">{name} 1</span>
     </span>
   );
 }
 
-function CycleTypeModal({
+/** The add/edit form for one cycle type. Exported because the block form opens the same dialog:
+ *  a coach who reaches the picker and finds the type missing shouldn't have to leave a
+ *  half-filled block behind to go and add it. */
+export function CycleTypeModal({
   tier,
   type,
   onClose,
 }: {
   tier: CycleTier;
   type: CycleType | null;
-  onClose: () => void;
+  /** Called with the type that was just added, so a caller can select it straight away. */
+  onClose: (created?: CycleType) => void;
 }) {
   const meta = TIERS[tier];
   const [name, setName] = React.useState(type?.name ?? "");
@@ -277,15 +288,23 @@ function CycleTypeModal({
     setSaving(true);
     setError(null);
     const input = { tier, name, description, color };
-    const result = type
-      ? await updateCycleType(type.id, input)
-      : await createCycleType(input);
+    if (type) {
+      const result = await updateCycleType(type.id, input);
+      setSaving(false);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      onClose();
+      return;
+    }
+    const result = await createCycleType(input);
     setSaving(false);
     if (result.error) {
       setError(result.error);
       return;
     }
-    onClose();
+    onClose(result.id ? { ...input, id: result.id, name: name.trim() } : undefined);
   };
 
   return (
@@ -295,7 +314,7 @@ function CycleTypeModal({
       title={type ? `Edit ${meta.singular}` : `New ${meta.singular}`}
       footer={
         <div className="flex justify-end gap-2">
-          <Button onClick={onClose} size="md" variant="secondary">
+          <Button onClick={() => onClose()} size="md" variant="secondary">
             Cancel
           </Button>
           <Button disabled={!name.trim()} loading={saving} onClick={save} size="md">
@@ -333,7 +352,7 @@ function CycleTypeModal({
           />
         </div>
 
-        {meta.preview ? (
+        {meta.colour && (
           <div className="flex flex-col gap-2">
             <Label id="cycle-colour-label">Colour</Label>
             {/* A group, so the eight buttons are announced as one choice rather than eight
@@ -364,14 +383,12 @@ function CycleTypeModal({
               ))}
             </div>
           </div>
-        ) : null}
+        )}
 
-        {meta.preview ? (
-          <div className="flex flex-col gap-2">
-            <Label>Preview</Label>
-            <CyclePreview color={color} name={name || "Name"} tier={tier} />
-          </div>
-        ) : null}
+        <div className="flex flex-col gap-2">
+          <Label>Preview</Label>
+          <CyclePreview color={color} name={name || "Name"} tier={tier} />
+        </div>
 
         {error ? (
           <Note size="sm" type="error">

@@ -854,3 +854,49 @@ export function GripIcon({
     </svg>
   );
 }
+
+// Geist Box — copied from the design system's icon set.
+export function BoxIcon({
+  className,
+  ...props
+}: { className?: string } & React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      className={className}
+      aria-hidden="true"
+      {...props}
+    >
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M8 0.154999L8.346 0.334999L14.596 3.585L15 3.795V12.205L14.596 12.415L8.346 15.665L8 15.845L7.654 15.665L1.404 12.415L1 12.205V3.795L1.404 3.585L7.654 0.334999L8 0.154999ZM2.5 11.295V5.44L7.25 7.815V13.764L2.5 11.294V11.295ZM8.75 13.765L13.5 11.295V5.44L8.75 7.816V13.765ZM8 1.845L12.577 4.225L8 6.514L3.423 4.225L8 1.845Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+// Geist Check — copied from the design system's icon set.
+export function CheckIcon({
+  className,
+  ...props
+}: { className?: string } & React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      className={className}
+      aria-hidden="true"
+      {...props}
+    >
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M15.56 4L15.03 4.53L6.237 13.323C5.90885 13.6509 5.46392 13.8351 5 13.8351C4.53609 13.8351 4.09116 13.6509 3.763 13.323L0.970002 10.53L0.440002 10L1.5 8.94L2.03 9.47L4.823 12.263C4.84623 12.2863 4.87381 12.3048 4.90419 12.3174C4.93456 12.33 4.96712 12.3364 5 12.3364C5.03289 12.3364 5.06545 12.33 5.09582 12.3174C5.12619 12.3048 5.15378 12.2863 5.177 12.263L13.97 3.47L14.5 2.94L15.56 4Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}

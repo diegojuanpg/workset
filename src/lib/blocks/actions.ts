@@ -34,6 +34,14 @@ const PLANNING_PATH = "/[username]/athletes/[id]/planning";
 
 /** The rules a block has to satisfy whichever way it is written. The whole-week ones are also
  *  table constraints; these exist to answer with something a coach can read. */
+/** Whole days from one yyyy-mm-dd to another, signed. Used to tell a move (both ends travel
+ *  the same distance) from a resize, the same test the table's own trigger makes. */
+function daysApart(to: string, from: string): number {
+  return Math.round(
+    (fromISODate(to).getTime() - fromISODate(from).getTime()) / 86_400_000,
+  );
+}
+
 function validate(input: TrainingBlockInput): string | null {
   const name = input.name.trim();
   if (!name || name.length > 80)
@@ -154,6 +162,37 @@ export async function updateTrainingBlock(
 
   const invalid = validate(input);
   if (invalid) return { error: invalid };
+
+  // A resize that leaves a labelled week outside the block is a deletion: the trigger on the
+  // table drops any microcycle the block no longer covers. Refused rather than performed —
+  // dragging an edge one column too far shouldn't quietly cost a week of planning, and the
+  // coach can clear the week first if that is what they meant. Every path in — the drag, the
+  // arrow keys, this dialog — lands here, so the rule is enforced once.
+  //
+  // Only a resize is checked. A move takes its weeks with it: both ends travel the same
+  // distance and the trigger carries every label along, so the labels sitting outside the
+  // block's new range at this moment are exactly the ones about to be moved into it.
+  const { data: before } = await supabase
+    .from("training_blocks")
+    .select("starts_on, ends_on")
+    .eq("id", id)
+    .maybeSingle();
+  const shift = before && daysApart(input.startsOn, before.starts_on);
+  const moving = shift !== null && shift !== 0 && shift === daysApart(input.endsOn, before!.ends_on);
+  if (before && !moving) {
+    // Read through RLS, so a block that isn't theirs simply comes back empty.
+    const { data: dropped } = await supabase
+      .from("microcycles")
+      .select("starts_on")
+      .eq("block_id", id)
+      .or(`starts_on.lt.${input.startsOn},starts_on.gt.${input.endsOn}`);
+    if (dropped && dropped.length > 0) {
+      const n = dropped.length;
+      return {
+        error: `That would drop ${n} planned ${n === 1 ? "week" : "weeks"}. Clear ${n === 1 ? "it" : "them"} first.`,
+      };
+    }
+  }
 
   // No athlete check: the row's own policy already limits this to blocks the coach owns, and
   // athlete_id isn't in the update grant, so the block can't be moved to someone else's lifter.

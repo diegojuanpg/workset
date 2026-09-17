@@ -4,9 +4,10 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Scroller } from "@/components/ui/scroller";
 import {
-  GripIcon,
+  BoxIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  GripIcon,
   PlusIcon,
 } from "@/components/icons";
 import { monthSpans, yearWeeks } from "@/lib/calendar/year";
@@ -45,9 +46,15 @@ import {
 } from "@/lib/blocks/actions";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
-import { toast } from "@/components/ui/toast";
+import { toast, UNDO_DURATION } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
-import { BLOCK_BAR, MICRO_CHIP } from "@/components/calendar/chips";
+import {
+  BLOCK_BAR,
+  DashedBox,
+  MACRO_CAPTION,
+  MacroBracket,
+  MICRO_CHIP,
+} from "@/components/calendar/chips";
 import {
   fillFor,
   microLabel,
@@ -58,11 +65,21 @@ import { Select } from "@/components/ui/select";
 import { numberedName } from "@/lib/blocks/names";
 import { macrosIntact, reordered, runAround } from "@/lib/blocks/order";
 import { MicroPicker } from "@/components/calendar/micro-picker";
+import {
+  clipName,
+  readClip,
+  writeClip,
+  type Clip,
+  type ClipMicro,
+} from "@/lib/blocks/clipboard";
+
+/** A block as drawn this year: its row plus where it sits in the week columns. */
+type Bar = TrainingBlock & { start: number; span: number; clipped: boolean };
 
 const WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
 /** What the single letters stand for. The axis has two Ts and two Ss, so the letter alone is
  *  not a name a screen reader can use. */
-const WEEKDAY_NAMES = [
+export const WEEKDAY_NAMES = [
   "Monday",
   "Tuesday",
   "Wednesday",
@@ -87,47 +104,54 @@ const COLUMN = `${COLUMN_PX}px`;
  *  The M–S label centres in the remaining 24px, so it reads centred but sits left of the middle. */
 const AXIS_COLUMN = "2.5rem";
 
+/** The cursor's ring on every cell of the card: hugging the shape, following its radius,
+ *  not floating 2px off it as a halo, and in the design system's own foreground rather than
+ *  the browser's two-tone blue.
+ *
+ *  Drawn on :focus rather than :focus-visible. The browser's heuristic withholds the ring
+ *  from a cell the pointer just pressed, which is the one moment a coach most needs to see
+ *  where the arrow keys will start from: a press on the plan is how the keyboard is picked
+ *  up here. The ring leaves with the focus, so it is never on screen unasked.
+ *
+ *  No outline-none/outline-hidden alongside: in Tailwind v4 both blank the style variable
+ *  that focus:outline-2 draws with, and the ring never appears. */
+const FOCUS_RING =
+  "focus:outline-2 focus:outline-offset-0 focus:outline-[var(--ds-gray-1000)]";
+
+/** The block the planner below is showing. A hairline drawn inside the bar's own edge, not a
+ *  halo around it: the focus ring is 2px of outline sitting outside the shape, so when both
+ *  this is the one being edited. Geist marks a selected day the same way, a 1px line against
+ *  the 2px its focus ring spends.
+ *
+ *  It steps aside while the bar holds the focus. Both marks are --ds-gray-1000, so a pressed
+ *  bar wore 1px inside and 2px outside at once and read as a single fat 3px border — the ring
+ *  says everything the hairline would while the focus is there, and the hairline comes back
+ *  the moment it leaves. */
+const SELECTED_BAR =
+  "shadow-[inset_0_0_0_1px_var(--ds-gray-1000)] focus:shadow-none";
+
 /** Geist day cell: a 32px chip whose 30px leading centres the digit, boxed in a subtle fill. */
-const DAY_CELL =
-  "block size-8 justify-self-center rounded-[4px] border border-transparent text-center text-[14px] leading-[30px] font-normal transition-colors";
+const DAY_CELL = cn(
+  "block size-8 justify-self-center rounded-[4px] border border-transparent text-center text-copy-14 leading-[30px] transition-colors",
+  FOCUS_RING,
+);
 
-/** The grid's chrome: month captions and the M–S axis. Day size, semibold — it leads the eye
- *  without outgrowing the numbers it heads, and keeps the two axes on one voice. */
-const GRID_TEXT = "text-[14px] font-semibold";
+/** Month captions: day size, medium. They lead the eye without outgrowing the numbers they
+ *  head, and leave bold to the one thing on the card that earns it — the block bar. */
+const MONTH_CAPTION = "text-label-14 font-medium text-[var(--ds-gray-1000)]";
 
-/** Week-number row: same rhythm, dialed back in weight so it reads as scaffolding. Tone stops
- *  at gray-900 — gray-700 is 3.2:1 on a light background, and this is 12px text carrying the
- *  unit the whole plan is measured in, not decoration. */
-const WEEK_NUMBER =
-  "text-xs leading-[18px] font-normal text-[var(--ds-gray-900)]";
+/** Week-number row and the M–S axis: the same 12px scaffolding Geist's own calendar uses for
+ *  its weekday header. Tone stops at gray-900 — gray-700 is 3.2:1 on a light background, and
+ *  this is 12px text carrying the unit the whole plan is measured in, not decoration. */
+const AXIS_TEXT = "text-label-12 leading-[18px] text-[var(--ds-gray-900)]";
 
 /** The rules bracketing the day matrix, measured off the card's own top edge. The week row carries
  *  12px below itself, so the header closes at 57 and the first chip starts at 77; the rules sit 7px
- *  clear of the matrix on both sides. The card's padding is even again now that the block, micro
- *  and macro rows sit below the lower rule — it is no longer the last thing on the card. */
+ *  clear of the matrix on both sides. The card closes on the macro caption, whose own box carries
+ *  the last 2px of the line's leading — so pb-1.5 is what leaves the name the same 8px off the card's
+ *  lower edge that the first block sits off the rule above it. */
 const MATRIX_TOP = 69;
 const MATRIX_HEIGHT = 288;
-
-/** The M–S axis is sticky while the week columns scroll under it, and nothing keeps the two in
- *  register: the gap between the letter and the nearest day cycles from a whole column down to
- *  zero every 34.43px of scroll, and at the bottom of that cycle the axis's own background slices
- *  a digit in half. Snapping parks the scroll on column boundaries, so that gap is always the
- *  chip's own leading air. The scroll-padding is what lands a column at the axis's right edge
- *  instead of underneath it — it reads `--axis` because Tailwind can't interpolate a JS constant
- *  into an arbitrary value. */
-const SNAP_TO_WEEKS =
-  "[&_[data-geist-scroller-container]]:snap-x [&_[data-geist-scroller-container]]:snap-proximity [&_[data-geist-scroller-container]]:[scroll-padding-left:var(--axis)]";
-
-/** Snapping is switched off for the length of a drag. Mandatory snapping used to fight the
- *  gesture — the track kept pulling towards a column while the pointer was carrying a bar —
- *  and proximity still tugs at the end of a throw. */
-const NO_SNAP = "[&_[data-geist-scroller-container]]:snap-none";
-
-/** The Scroller ships a thin scrollbar. Hidden here — the year always overflows, so the bar would
- *  be permanent furniture; the right-edge fade already says there is more. Reached through the DS
- *  component's own data attribute rather than by editing the copied source. */
-const NO_SCROLLBAR =
-  "[&_[data-geist-scroller-container]]:[scrollbar-width:none] [&_[data-geist-scroller-container]::-webkit-scrollbar]:hidden";
 
 /** Push past either end and the browser rubber-bands the whole track sideways — but the M–S
  *  axis is sticky, so it stays clamped to the viewport while the days slide out from under it,
@@ -136,19 +160,64 @@ const NO_SCROLLBAR =
 const NO_BOUNCE =
   "[&_[data-geist-scroller-container]]:overscroll-x-none";
 
-/** Which side of the blocks the bracket lives on: above them, or below them and their micros.
- *  One switch, because everything it decides has to agree — the grid rows reorder, the name
- *  moves with the rule, and the margin that clears the day matrix's lower rule goes to
- *  whichever row ends up directly under it. */
-const MACRO_ABOVE = false;
+/** The Scroller ships a thin scrollbar. Hidden here: the year always overflows, so the bar
+ *  would be permanent furniture — and on Windows a 12px one with arrow buttons — under a
+ *  surface that already moves with the wheel, the trackpad and any drag. The edge fades say
+ *  where the rest of the year is, and the view opens on today's week without being asked. */
+const NO_SCROLLBAR =
+  "[&_[data-geist-scroller-container]]:[scrollbar-width:none] [&_[data-geist-scroller-container]::-webkit-scrollbar]:hidden";
 
-/** A training block's bar. Rides the same week columns as the days, one grid row below the
- *  matrix, so it stays aligned and scrolls with them for free. 32px, the day chip's own size,
- *  and deliberately taller than today's 28px marker — that one earns its presence from the
- *  focus ring instead. mx-0.5 insets it 2px, so two blocks that share a boundary read as two
- *  bars with 4px between them instead of one long shape. The top margin clears the lower rule
- *  — only when the blocks are the row sitting under it; see MACRO_ABOVE. */
-const BLOCK_SLOT = cn("mx-0.5", !MACRO_ABOVE && "mt-1.5");
+/** The plan under the day matrix: block bars, their micro chips directly under them, and the
+ *  macrocycle caption closing the group below those. Each is a row of the same grid the days
+ *  use, so everything rides the same week columns and scrolls together for free. The 3 is the
+ *  two header rows the grid opens with, counted from 1. */
+const BLOCK_ROW = 3 + WEEKDAYS.length;
+const MICRO_ROW = BLOCK_ROW + 1;
+const MACRO_ROW = MICRO_ROW + 1;
+
+/** What those three rows come to on screen: the bar (32) and the micro chip (24) and the
+ *  macro caption (24), the grid's two 8px row gaps and the block slot's own mt-2. The empty
+ *  year starts where they do and takes at least as much room.
+ *  ponytail: one number derived by hand; if a row changes height, this follows it. */
+const PLAN_ROWS = 104;
+
+/** The plan's rows in the order the keyboard walks them, under the seven day rows. */
+type PlanKind = "block" | "micro" | "macro";
+const PLAN_ORDER: readonly PlanKind[] = ["block", "micro", "macro"];
+const rowOf = (kind: PlanKind): number => WEEKDAYS.length + PLAN_ORDER.indexOf(kind);
+const kindOf = (row: number): PlanKind | undefined => PLAN_ORDER[row - WEEKDAYS.length];
+const LAST_ROW = WEEKDAYS.length + PLAN_ORDER.length - 1;
+
+/** What a key press knows about the cell it landed on. */
+interface KeyContext {
+  row: number;
+  wi: number;
+  bar?: Bar;
+  micro?: { bar: Bar; week: number; label: string; typeId: string | null };
+  macro?: { macro: Macrocycle; first: number; last: number };
+}
+
+/** An empty week in the block row: nothing to see, but somewhere the cursor can stand to
+ *  start a block or paste one. Transparent to the pointer — the offers live on this row. */
+const EMPTY_SLOT = cn("pointer-events-none h-8 w-full rounded-md", FOCUS_RING);
+
+/** The grid's own vertical gap (gap-y-2), as a number: the month bands close half of it on
+ *  each side, so a month's edge lands midway between the last day it owns and the first day
+ *  it does not. */
+const ROW_GAP = 8;
+/** The air between the last day chip and the rule that closes the matrix. A band that reaches
+ *  the end of a column takes all of it, so the stripe meets the rule instead of stopping a
+ *  chip short of it — MATRIX_TOP is the same clearance on the other side. */
+const MATRIX_CLEAR = 8;
+
+/** mx-0.5 insets every mark 2px, so two that share a boundary read as two shapes with 4px
+ *  between them instead of one long one. The block row sits directly under the matrix's lower
+ *  rule, so it is the one that carries the margin clearing it. */
+const MACRO_SLOT = "mx-0.5";
+const BLOCK_SLOT = "mx-0.5 mt-2";
+/** -mt-1 halves the grid's 8px row gap, so the chips sit the same 4px under their bar as they
+ *  sit from each other. */
+const MICRO_SLOT = "mx-0.5 -mt-1";
 /** A bar over a week it can't land on: outlined rather than tinted, so the name stays readable
  *  and the refusal reads as a rule about the position, not about the block. */
 const REFUSED_BAR = "shadow-[0_0_0_1px_var(--ds-red-900)]";
@@ -158,140 +227,63 @@ const REFUSED_BAR = "shadow-[0_0_0_1px_var(--ds-red-900)]";
  *  enough that correcting it in the modal is one field. */
 const OFFER_WEEKS = 4;
 
-/** Three rows under the day matrix. The blocks and their micros always travel together, in
- *  that order; the bracket takes whichever end MACRO_ABOVE points it at. */
-const MACRO_ROW = MACRO_ABOVE ? 3 + 7 : 3 + 9;
-const BLOCK_ROW = MACRO_ABOVE ? 3 + 8 : 3 + 7;
-const MICRO_ROW = BLOCK_ROW + 1;
-/** The offer, on an empty week. Invisible until the pointer is on that column — a row of
- *  dashed boxes under every block would be louder than the blocks themselves. */
-/** What a new micro is labelled with. A placeholder until the kinds of week a coach works in
- *  are a thing the app knows about. */
+/** What a new micro is labelled with when the coach has no microcycle types yet. */
 const MICRO_DEFAULT = "A";
-/** The look of an offer, shared by the empty micro week and the block offered beside a bar:
- *  dashed and unfilled, so it reads as somewhere something could go rather than something that
- *  is already there, and brightening under the pointer. Only the look is shared — a micro is
- *  summoned by hovering its column, a block offer by hovering itself, so each keeps its own
- *  reveal. */
+/** The look of an offer — an empty micro week, the block offered beside a bar, the macro
+ *  offered over a block: dashed and unfilled, so it reads as somewhere something could go
+ *  rather than something that is already there, and brightening under the pointer. */
+/** The dashes themselves are a `DashedBox` child — one continuous path round the silhouette,
+ *  see chips.tsx — so the element only sets the colour, through the `--dash` variable the
+ *  box reads, and lifts it with its text on hover. */
 const GHOST =
-  "cursor-pointer rounded-md border border-dashed border-[var(--ds-gray-alpha-500)] text-label-12 text-[var(--ds-gray-900)] transition-colors hover:border-[var(--ds-gray-1000)] hover:text-[var(--ds-gray-1000)]";
+  "relative cursor-pointer rounded-md text-label-12 text-[var(--ds-gray-900)] transition-colors [--dash:var(--ds-gray-alpha-500)] hover:text-[var(--ds-gray-1000)] hover:[--dash:var(--ds-gray-1000)]";
+/** Invisible until the pointer is on that column: a row of dashed boxes under every block
+ *  would be louder than the blocks themselves. */
 const MICRO_GHOST = cn(
   GHOST,
-  "h-8 w-full opacity-0 focus-visible:opacity-100 group-hover/micro:opacity-100",
+  // The keyboard lights the offer the way the pointer does — the dashes and the plus go to
+  // full contrast — and nothing else: the browser's own ring around a dashed box was two
+  // outlines fighting over one 24px square.
+  "h-6 w-full opacity-0 outline-none focus-visible:opacity-100 focus-visible:text-[var(--ds-gray-1000)] focus-visible:[--dash:var(--ds-gray-1000)] group-hover/micro:opacity-100",
+);
+/** The micro ghost's box: one column less the slot's 2px inset each side, the chip's height. */
+const MICRO_GHOST_BOX = { width: COLUMN_PX - 4, height: 24 };
+/** The block offered beside a bar. Faint while the pointer is near it, full under it. Near,
+ *  not anywhere: revealing every offer on the year the moment the pointer touched the card put
+ *  dashed boxes 30 columns from the hand that would never be pressed, and a plan a coach is
+ *  reading came with a row of invitations it never asked for. */
+const OFFER_REVEAL =
+  "opacity-0 transition-opacity hover:opacity-100! focus-visible:opacity-100!";
+/** How many columns past an offer still count as near it. Two weeks of travel either side —
+ *  far enough that the offer is already there when the pointer arrives, close enough that it
+ *  belongs to the block the coach is looking at. */
+const OFFER_REACH = 2;
+
+/** The macrocycle's caption, as drawn in chips.tsx, plus how it answers the pointer. The
+ *  whole caption is the rename control: name and bracket lift to full contrast together under
+ *  hover and while an edge is being dragged, and turn red the moment the reach it is showing
+ *  can't be saved. `group` on the button is what lets the bracket, a child, follow. */
+const MACRO_HOVER =
+  "group cursor-pointer outline-none hover:text-[var(--ds-gray-1000)] focus-visible:text-[var(--ds-gray-1000)]";
+const MACRO_BRACKET_HOVER =
+  "group-hover:border-[var(--ds-gray-alpha-600)] group-focus-visible:border-[var(--ds-gray-alpha-600)]";
+const MACRO_HELD = "text-[var(--ds-gray-1000)]";
+const MACRO_BRACKET_HELD = "border-[var(--ds-gray-1000)]";
+const MACRO_REFUSED = "text-[var(--ds-red-900)]";
+const MACRO_BRACKET_REFUSED = "border-[var(--ds-red-900)]";
+/** Offered over a block that has no macro yet: the caption's own silhouette, dashed. Shown
+ *  from the block and its micros as well as from itself, since the offer belongs to the whole
+ *  meso and the pointer has to cross a row gap to reach it. */
+const MACRO_GHOST = cn(
+  MACRO_CAPTION,
+  "group w-full cursor-pointer text-[var(--ds-gray-700)] opacity-0 outline-none [--dash:var(--ds-gray-alpha-500)] hover:text-[var(--ds-gray-1000)] hover:[--dash:var(--ds-gray-1000)] focus-visible:opacity-100 focus-visible:text-[var(--ds-gray-1000)] focus-visible:[--dash:var(--ds-gray-1000)]",
 );
 
-/** The bracket: one rule across the macro's reach with a tick at each end — |‾‾‾| above its
- *  blocks, |___| below them — and its name centred on the rule, on a patch of card that hides
- *  the line behind it. */
-/** How thick the bracket is drawn, rule and ticks alike. A number rather than four Tailwind
- *  arbitrary values, because they are one measurement wearing four hats and the scanner cannot
- *  build a class out of a variable: the rule was once 1.5px while the ticks used `w-0.5`, which
- *  is 2px, under a comment claiming 1.5 everywhere — and every later adjustment carried that
- *  mismatch forward until it showed.
- *
- *  1.5 matches Geist Bold's ~1.4px stem, so rule, ticks and the word between them all weigh the
- *  same and |—— Macro 1 ——| reads as one drawn mark rather than a label on a hairline. */
-const BRACKET_STROKE = 1.5;
-/** Where the rule's own box starts inside the slot. The tick is placed against the rule's
- *  centre line, which is half a stroke further down, so both follow from this one number. */
-const BRACKET_TOP = MACRO_ABOVE ? 8 : 12;
-const BRACKET_STYLE: React.CSSProperties = {
-  top: BRACKET_TOP,
-  height: BRACKET_STROKE,
-};
-/** The tick reaches 6px past the rule's centre line and stops flush with the far side of its
- *  stroke, so its height is that reach plus the half-rule it sits on — never a second number
- *  to keep in step by hand. */
-const BRACKET_END_STYLE: React.CSSProperties = {
-  // Above its blocks the tick hangs down from the rule's top edge; below them it rises to that
-  // edge, so it starts a reach-and-a-half-rule higher up.
-  top: MACRO_ABOVE
-    ? BRACKET_TOP
-    : BRACKET_TOP + BRACKET_STROKE / 2 - 6,
-  height: 6 + BRACKET_STROKE / 2,
-  width: BRACKET_STROKE,
-};
-
-/** Where one tick sits along the bracket. Both are the same 1.5px box, but the slot is as wide
- *  as its macro is long — a whole number of 34.43px columns, so a fraction — and pinning one to
- *  each edge lands them on different subpixel offsets. The browser then spreads one across three
- *  device pixels and the other across two, and the far tick reads visibly lighter than the near
- *  one, differently for every macro length.
- *
- *  So the far tick is placed a whole number of pixels from the near one instead of against the
- *  edge. Both then meet the pixel grid identically and rasterise the same. It costs up to half a
- *  pixel of alignment with the slot's true right edge, which nobody can see; a tick at half
- *  weight, as it turns out, they can. */
-function bracketEndOffset(columns: number, side: "near" | "far"): number {
-  if (side === "near") return 0;
-  // The slot's own mx-0.5 takes 2px off each end of the grid area it spans.
-  return Math.round(columns * COLUMN_PX - 4 - BRACKET_STROKE);
+/** A silhouette's width in px from the columns it spans. The slot's own mx-0.5 takes 2px off
+ *  each end. The dashed shapes are fitted to this, so their dashes come out whole. */
+function silhouetteWidth(columns: number): number {
+  return columns * COLUMN_PX - 4;
 }
-const BRACKET = cn(
-  // Stops at the ticks' centre line rather than at the container's edge: the rule's end lands
-  // on a fraction of a device pixel, and whatever that rounds outwards is hidden under the tick
-  // instead of poking out past it.
-  // A box, not a border: Chrome rounds border-width to whole device pixels, so a 1.5px rule
-  // drew at 1px while the ticks — backgrounds, which antialias — drew at 1.5. Same painting
-  // path for both is what makes them the same weight and share a centre line.
-  // 14px under the micros: the slot's own -mt-1.5 against the grid's 8px gap puts its top 2px
-  // below them, and the rule sits 12px into it (BRACKET_TOP). Moved inside the slot rather than
-  // by pulling the slot up, which would slide its click target over the bottom of the micros.
-  "pointer-events-none absolute inset-x-px bg-[var(--ds-gray-900)]",
-);
-/** The ticks rise from the rule towards the blocks they close around and stop flush with the far
- *  side of its stroke — ⌐———¬ rather than |———| : two ends marking where the macro starts and
- *  stops, without the halves that used to hang past it into open card.
- *
- *  Sized and placed by BRACKET_END_STYLE — see BRACKET_STROKE. */
-const BRACKET_END = "pointer-events-none absolute bg-[var(--ds-gray-900)]";
-/** The negative margin eats the grid's 8px row gap on the block side, so the bracket belongs
- *  to the bars rather than floating a row away from them. */
-const BRACKET_SLOT = cn(
-  "relative mx-0.5 h-6",
-  MACRO_ABOVE ? "mt-1.5 -mb-2.5" : "-mt-1.5",
-);
-/** How far the bracket climbs when there are no micros to clear: the row's own 32px chip, plus
- *  the 4px of gap that separates it from the blocks above. The row is always in the grid, so
- *  the card keeps one height — closing it is a transform, not a reflow — and taking the gap
- *  along with the row is what leaves the bracket the same 14px under the blocks that it sits
- *  under the micros when they are there. */
-const MICRO_ROW_HEIGHT = 36;
-
-/** The bracket closing the gap when the micro row has nothing in it. transform, not margin:
- *  it moves the bracket without touching a single row's height, so the card cannot resize and
- *  the browser can run it on the compositor. The curve is a plain ease-out — the bracket is
- *  settling into place, not bouncing into it — and reduced motion collapses the duration
- *  globally in globals.css. */
-const BRACKET_SLIDE =
-  "transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]";
-const BRACKET_HELD = "bg-[var(--ds-gray-1000)]";
-/** Offered on hover over a block that has no macro yet. The button covers the whole row so it
- *  is something you can actually hit — the dashed bracket it draws is only 10px tall. */
-const BRACKET_GHOST = "group absolute inset-0 cursor-pointer";
-const BRACKET_GHOST_LINE = cn(
-  // Starts where the ticks end, not at the container's edge: a dash is 3px and the ticks are
-  // 2px, so a line drawn edge to edge lays its first and last dash straight over them.
-  "pointer-events-none absolute inset-x-0.5 border-t border-dashed border-[var(--ds-gray-alpha-500)] group-hover:border-[var(--ds-gray-1000)]",
-  MACRO_ABOVE ? "top-2" : "top-3",
-);
-/** The macro's name, sitting on the rule and cutting it — the middle of |—— Macro 1 ——|.
- *  Transparent to the pointer so the click lands on the button that covers the bracket. */
-const MACRO_NAME = cn(
-  // Never the full reach: a name that ran edge to edge covered the rule and both ticks, so a
-  // long one read as a floating word with a stray mark next to it. 12px a side keeps the tick
-  // and a bite of rule showing, which is what says the word is the label of a span.
-  "pointer-events-none absolute inset-x-0 mx-auto w-max max-w-[calc(100%-24px)] truncate bg-[var(--ds-background-100)] px-1.5 text-label-12 leading-4 font-bold text-[var(--ds-gray-900)]",
-  // Centred on the rule either way: the 16px line box straddles it.
-  MACRO_ABOVE ? "top-0" : "top-1",
-);
-
-/** The whole bracket lifts to full contrast on hover, announcing it is one thing you can click. */
-const MACRO_HOVER = {
-  line: "group-hover:bg-[var(--ds-gray-1000)]",
-  end: "group-hover:bg-[var(--ds-gray-1000)]",
-  name: "group-hover:text-[var(--ds-gray-1000)]",
-};
 
 /** Left axis width in pixels — the same 2.5rem as AXIS_COLUMN, needed as a number to read a
  *  week column off the pointer's x during a bracket drag. */
@@ -299,16 +291,11 @@ const AXIS_PX = 40;
 /** The card's own px-3, which anything measured from the card rather than from the grid has
  *  to start past. */
 const CARD_PAD_X = 12;
-/** How close to the card's bottom edge the pointer has to come before the scrollbar shows.
- *  Small on purpose: the bar is not a landmark, it is something you reach for. */
-const BAR_REACH = 40;
-
 /** How far each edge fade reaches in. Short and translucent on purpose: it is a hint that the
  *  year keeps going, and a heavier one reads as a column that failed to render. */
-const EDGE_FADE = 72;
-/** …and its pt-2.5 / pb-1.5, so an overlay can stop short of the card's own edges. */
+const EDGE_FADE = 56;
+/** …and its pt-2.5, so an overlay can start clear of the card's own edge. */
 const CARD_PAD_TOP = 10;
-const CARD_PAD_BOTTOM = 6;
 
 /** "Monday 4 May". No year: the calendar's own header already says which one. The comma the
  *  locale puts after the weekday is stripped — this format doesn't want it. */
@@ -349,6 +336,16 @@ const DRAFT_EDGE =
   "bg-[var(--ds-gray-1000)] font-medium text-[var(--ds-background-100)]";
 const DRAFT_FILL = "bg-[var(--ds-gray-alpha-200)]";
 
+/** The same band while the range can't become a block. The refusal is answered where the coach
+ *  is looking, during the gesture, the way a refused *move* already outlines its bar in red —
+ *  not only on release, in a toast at the far corner of the screen.
+ *
+ *  The band recolours; no silhouette appears. Drawing the bar in red would promise a block and
+ *  take it back in the same gesture, which is what the plan row deliberately refuses to do. */
+const DRAFT_EDGE_REFUSED =
+  "bg-[var(--ds-red-900)] font-medium text-[var(--ds-contrast-fg)]";
+const DRAFT_FILL_REFUSED = "bg-[var(--ds-red-300)]";
+
 /** Today and a meet day the band runs over. These replace the band's fill on that cell rather
  *  than being drawn inside it: the tint takes the box whole — full column width, the 8px row
  *  gap bridged, and whichever of the range's four outer corners the cell happens to be at — so
@@ -374,7 +371,7 @@ const DRAFT_MEET =
  *  one column wide, and "1 week" is wider than the 34px that leaves. */
 const BLOCK_DRAFT = cn(
   BLOCK_BAR,
-  "border border-dashed border-[var(--ds-gray-alpha-600)] bg-[var(--ds-gray-alpha-100)] text-[var(--ds-gray-900)]",
+  "bg-[var(--ds-gray-alpha-100)] text-[var(--ds-gray-900)] [--dash:var(--ds-gray-alpha-600)]",
 );
 
 /** How vercel.com typesets Geist: stylistic set 11, no contextual alternates, no synthesised weight. */
@@ -384,19 +381,16 @@ const GEIST_TYPE = {
   textRendering: "optimizeLegibility",
 } as const;
 
-/** Today, styled after the day the Geist picker highlights on open: the solid blue chip, plus the
- *  design system's focus ring — 2px of card background, then 2px of focus colour, which in dark
- *  mode is the chip's own blue. Its box is smaller than the cell's 32px so the ring has somewhere
- *  to go, and it centres its own digit with flex rather than a leading derived from that height,
- *  which would be a second number to keep in step. `self-center` holds it on the row's centre. */
+/** Today: Geist's own "today" chip — the solid blue day, nothing else. No ring: a ring is
+ *  what focus looks like, and a day that is permanently ringed reads as permanently focused. */
 const TODAY =
-  "flex size-7 items-center justify-center self-center bg-[var(--ds-blue-900)] text-[var(--ds-background-100)] shadow-[var(--ds-focus-ring)]";
+  "bg-[var(--ds-blue-900)] font-medium text-[var(--ds-background-100)]";
 
-/** A meet day: today's marker in red, down to the shadow. One marker for every federation —
- *  the calendar is only answering "when do I compete", and a per-federation livery would mean
- *  inventing a palette for each new federation a coach types in. */
+/** A meet day: the same chip in red. One marker for every federation — the calendar is only
+ *  answering "when do I compete", and a per-federation livery would mean inventing a palette
+ *  for each new federation a coach types in. */
 const MEET =
-  "flex size-7 items-center justify-center self-center bg-[var(--ds-red-900)] text-[var(--ds-background-100)] shadow-[0_0_0_2px_var(--ds-background-100),0_0_0_4px_var(--ds-red-900)]";
+  "bg-[var(--ds-red-900)] font-medium text-[var(--ds-background-100)]";
 
 /** Geist Calendar nav: circular, transparent, gray-700 until hover. */
 const NAV =
@@ -431,8 +425,13 @@ function isSameDay(a: Date, b: Date): boolean {
 interface YearCalendarProps {
   athleteId: string;
   blocks: TrainingBlock[];
+  /** The block whose weeks the planner under the calendar is showing, if any. The calendar
+   *  doesn't own it — it only draws which one it is and reports the presses that change it. */
+  onSelectBlock: (id: string) => void;
   competitions: AthleteCompetition[];
   macros: Macrocycle[];
+  /** The block the planner under the calendar is showing, marked on its bar. */
+  selectedBlockId: string | null;
   micros: Microcycle[];
   /** The coach's own vocabulary, as the settings page left it. Every picker on the calendar
    *  offers exactly these — the calendar never invents a name or a colour of its own. */
@@ -445,8 +444,10 @@ export function YearCalendar({
   blocks,
   competitions,
   macros,
+  selectedBlockId,
   micros,
   types,
+  onSelectBlock,
 }: YearCalendarProps) {
   const [year, setYear] = React.useState(() => new Date().getFullYear());
   const [creating, setCreating] = React.useState<{
@@ -463,8 +464,17 @@ export function YearCalendar({
     blockId: string;
     from: number;
     startX: number;
+    /** Raw pointer travel, clamped to the block. The carried chip follows this. */
+    dx: number;
+    /** …and the same travel in whole columns: the slot it will land on. The chips between
+     *  step aside towards the week it left, so the row previews the shift it is about to
+     *  make — a lift-and-drop, not a swap. */
     delta: number;
   } | null>(null);
+  /** Set by a micro drag that travelled, read by the click that follows it: a chip is both a
+   *  drag handle and the button that opens its picker, and a release after a drag is not a
+   *  request to open anything. */
+  const microDragged = React.useRef(false);
   const [gesture, setGesture] = React.useState<{
     id: string;
     mode: "move" | "start" | "end";
@@ -502,12 +512,20 @@ export function YearCalendar({
   /** The block the pointer is over, which is what offers the ghost bracket. Also set from the
    *  ghost itself: it lives a row below, so moving down to click it leaves the block. */
   const [hovered, setHovered] = React.useState<string | null>(null);
+  /** The week column under the pointer, or null when the pointer is off the grid. Only what
+   *  the offers need to know how close the hand is; a column index, so it changes once per
+   *  34px of travel rather than once per pixel. */
+  const [nearWeek, setNearWeek] = React.useState<number | null>(null);
   /** Macro assignments a drag just wrote, held until the server round-trips. Same idea as
    *  `placed`, and read the same way: undefined means "no local opinion", null means "no macro". */
   const [assigned, setAssigned] = React.useState<
     Record<string, string | null>
   >({});
   const [renaming, setRenaming] = React.useState<Macrocycle | null>(null);
+  /** The block a new macro is being named for. A macro is a coach's own vocabulary — the app
+   *  inventing "Macro 3" and making them rename it afterwards is one step too many, and the
+   *  name it picks is wrong every time. */
+  const [naming, setNaming] = React.useState<string | null>(null);
   /** Labels typed since the last server round-trip, keyed `blockId|monday`. An empty string
    *  is a week whose micro was just cleared, which is why this can't be a plain lookup miss. */
   /** Micros written since the last round-trip. The type rides with the label because the two
@@ -537,7 +555,7 @@ export function YearCalendar({
   const months = React.useMemo(() => monthSpans(weeks), [weeks]);
 
   // Blocks are stored once and clipped per year: one can start in December and run on.
-  const bars = React.useMemo(
+  const bars = React.useMemo<Bar[]>(
     () =>
       blocks.flatMap((b) => {
         const at = placed[b.id] ?? b;
@@ -627,6 +645,9 @@ export function YearCalendar({
       !bars.some(
         (b) => start <= b.start + b.span - 1 && b.start <= start + OFFER_WEEKS - 1,
       );
+    // Offers sit beside a block that already exists. An empty year gets none: the empty state
+    // under the matrix is what tells a coach how to draw the first one, and a dashed silhouette
+    // appearing under the pointer would be a second answer to the same question.
     const starts = new Set<number>();
     for (const b of bars) {
       for (const start of [b.start + b.span, b.start - OFFER_WEEKS]) {
@@ -648,6 +669,9 @@ export function YearCalendar({
     }
     return kept;
   }, [bars, weeks, today]);
+  /** The offers actually on screen: none while a range is being drawn, since the drag has
+   *  its own silhouette. Read by the offers themselves and by the empty slots they replace. */
+  const shownOffers = draft ? [] : offers;
 
   /** Where a column sits in the range: an end, the middle, or outside it. */
   function draftAt(week: number): "edge" | "fill" | null {
@@ -709,14 +733,15 @@ export function YearCalendar({
         return;
       }
       toast(`${block.name} deleted`, {
+        duration: UNDO_DURATION,
         action: {
           label: "Undo",
           onClick: () => {
             void createTrainingBlock({
               athleteId,
-              // The app is writing this name back, not the coach: if something took it during
-              // the eight seconds the toast was up, the block returns numbered rather than
-              // not at all.
+              // The app is writing this name back, not the coach: if something took it
+              // while the Undo toast was up, the block returns numbered rather than not at
+              // all.
               autoRename: true,
               name: block.name,
               startsOn: block.startsOn,
@@ -748,6 +773,40 @@ export function YearCalendar({
   // Where a dragged block currently sits, and whether it may land there. Clamped to the year,
   // refused on top of another block — the same rule the table's exclusion constraint enforces —
   // and refused in a week that has already closed.
+  /** The Mondays a block currently carries a microcycle on: the rows the server holds, with
+   *  whatever has been typed since laid over them. Absolute dates rather than offsets, so a
+   *  block the year cuts in half is read the same as any other. */
+  const microDatesOf = React.useCallback(
+    (bar: { id: string }): string[] => {
+      const on = new Set<string>();
+      for (const m of micros) if (m.blockId === bar.id && m.label) on.add(m.startsOn);
+      for (const [key, local] of Object.entries(labels)) {
+        const cut = key.indexOf("|");
+        if (key.slice(0, cut) !== bar.id) continue;
+        const week = key.slice(cut + 1);
+        if (local.label) on.add(week);
+        else on.delete(week);
+      }
+      return [...on];
+    },
+    [micros, labels],
+  );
+
+  /** Why a block can't be resized to these weeks: shrinking past a labelled week deletes it,
+   *  since the table's trigger drops any microcycle the block no longer covers. Refused
+   *  rather than performed — an edge dragged one column too far shouldn't cost a week of
+   *  planning. The same sentence the server answers with, so the drag and the dialog agree. */
+  const dropRefusal = React.useCallback(
+    (bar: { id: string }, startsOn: string, endsOn: string): string | null => {
+      const n = microDatesOf(bar).filter((on) => on < startsOn || on > endsOn).length;
+      if (n === 0) return null;
+      return `That would drop ${n} planned ${n === 1 ? "week" : "weeks"}. Clear ${
+        n === 1 ? "it" : "them"
+      } first.`;
+    },
+    [microDatesOf],
+  );
+
   const drop = React.useMemo(() => {
     if (!gesture) return null;
     const bar = bars.find((b) => b.id === gesture.id);
@@ -775,11 +834,22 @@ export function YearCalendar({
     const clash = bars.find(
       (o) => o.id !== bar.id && start <= o.start + o.span - 1 && o.start <= end,
     );
+    // Only the edge that moved is rewritten. A move shifts the real dates rather than reading
+    // them off the columns, so a block clipped by the year's edge keeps its hidden half.
+    const startsOn =
+      gesture.mode === "end" ? bar.startsOn : toISODate(weeks[start].monday);
+    const endsOn =
+      gesture.mode === "start"
+        ? bar.endsOn
+        : toISODate(sundayOf(weeks[end].monday));
     const reason = clash
       ? `That would overlap ${clash.name}.`
       : startsInPastWeek(toISODate(weeks[start].monday), new Date())
         ? "A block can't start in a week that has already passed."
-        : null;
+        : // A move carries its weeks along, so only an edge can leave one behind.
+          gesture.mode === "move"
+          ? null
+          : dropRefusal(bar, startsOn, endsOn);
     return {
       bar,
       start,
@@ -787,16 +857,10 @@ export function YearCalendar({
       shift: start - bar.start,
       reason,
       valid: reason === null,
-      // Only the edge that moved is rewritten. A move shifts the real dates rather than reading
-      // them off the columns, so a block clipped by the year's edge keeps its hidden half.
-      startsOn:
-        gesture.mode === "end" ? bar.startsOn : toISODate(weeks[start].monday),
-      endsOn:
-        gesture.mode === "start"
-          ? bar.endsOn
-          : toISODate(sundayOf(weeks[end].monday)),
+      startsOn,
+      endsOn,
     };
-  }, [gesture, bars, weeks]);
+  }, [gesture, bars, weeks, dropRefusal]);
 
   /** Filled in below, once `reorderRun` has everything it reads in scope. Held in a ref for
    *  the same reason the rest of the drag's inputs are: the listeners are subscribed once for
@@ -911,16 +975,12 @@ export function YearCalendar({
           : { startsOn: d.startsOn, endsOn: d.endsOn };
       if (moved.startsOn === d.bar.startsOn && moved.endsOn === d.bar.endsOn)
         return;
-      const before = { startsOn: d.bar.startsOn, endsOn: d.bar.endsOn };
-      void place(d.bar, moved, before).then((ok) => {
-        if (!ok) return;
-        // The toast carries the way back rather than confirming what the coach just watched
-        // happen: landing a bar within a week of where it was is easy, landing it exactly
-        // where it started is not.
-        toast(`${d.bar.name} ${mode === "move" ? "moved" : "resized"}`, {
-          action: { label: "Undo", onClick: () => void place(d.bar, before, moved) },
-        });
-      });
+      // No toast. Sliding a bar a week and pulling its edge out are the two things a coach
+      // does over and over while planning a year, both undone by the same gesture the other
+      // way, and a receipt for each buried the calendar under its own confirmations. What
+      // still speaks up is a refusal, and anything that can't be reversed by hand — a delete,
+      // a reorder that rearranged a run.
+      void place(d.bar, moved, { startsOn: d.bar.startsOn, endsOn: d.bar.endsOn });
     };
     // The pointer spends the drag away from the handle, so `active:` on the button can't hold
     // the cursor. Owning it at the document level is the only thing that survives the trip.
@@ -936,65 +996,393 @@ export function YearCalendar({
     };
   }, [dragging, place]);
 
-  /** Where the keyboard is in the matrix. The arrows move it, Enter starts a block on that
-   *  week — the same thing double-clicking a cell does, reachable without a pointer. */
-  const [cursor, setCursor] = React.useState({ d: 0, wi: 0 });
+  /** Where the keyboard is on the calendar: a row and a week. Rows 0–6 are the days; the
+   *  three under them are the plan, in the order they are drawn. One cursor for the whole
+   *  card, so the arrows walk from a day down into its block, its week's micro and its macro
+   *  without the focus ever leaving the grid — and one tab stop, wherever the cursor is. */
+  const [cursor, setCursor] = React.useState({ row: 0, wi: 0 });
   const moved = React.useRef(false);
+
+  /** The element the cursor is on, if it is drawn. Days carry a data-cell; the plan's marks
+   *  carry the row they belong to and the weeks they cover, since a bar is one cell however
+   *  many weeks long it is. */
+  const cursorElement = React.useCallback(
+    (row: number, wi: number): HTMLElement | null => {
+      const grid = gridRef.current;
+      if (!grid) return null;
+      const kind = kindOf(row);
+      if (!kind) return grid.querySelector(`[data-cell="${row}-${wi}"]`);
+      return (
+        Array.from(grid.querySelectorAll<HTMLElement>(`[data-plan="${kind}"]`)).find(
+          (el) => Number(el.dataset.from) <= wi && wi <= Number(el.dataset.to),
+        ) ?? null
+      );
+    },
+    [],
+  );
+
+  // The cursor starts on today, so Tab into the calendar lands where the plan is being
+  // written rather than on the first of January, off the left edge of the scroll. Only until
+  // the coach has moved it themselves.
+  React.useEffect(() => {
+    if (!today || moved.current) return;
+    const wi = weeks.findIndex((w) => w.days.some((d) => isSameDay(d, today)));
+    if (wi === -1) return;
+    const row = weeks[wi].days.findIndex((d) => isSameDay(d, today));
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- today is only known after hydration
+    setCursor({ row, wi });
+  }, [today, weeks]);
+
   React.useEffect(() => {
     // Only ever chases the keyboard: pulling focus on mount would steal it from the page.
     if (!moved.current) return;
-    gridRef.current
-      ?.querySelector<HTMLElement>(`[data-cell="${cursor.d}-${cursor.wi}"]`)
-      ?.focus();
-  }, [cursor]);
+    // …and only when the focus is free to take. A picker open over the calendar has it, and
+    // so does whatever the pointer is on; the one case worth catching is the mark under the
+    // cursor having just been deleted, which drops the focus on the body.
+    const active = document.activeElement;
+    if (active && active !== document.body && !gridRef.current?.contains(active)) return;
+    const target = cursorElement(cursor.row, cursor.wi);
+    if (target && target !== active) target.focus();
+  }, [cursor, bars, micros, cursorElement]);
 
-  function onCellKey(e: React.KeyboardEvent, d: number, wi: number) {
+  /** The cells of one row as week ranges, in order. Days are one week each; the plan's rows
+   *  are read off what is drawn, so a bar is one cell and a week with nothing under it in the
+   *  micro or macro row is no cell at all. */
+  function cellsOf(row: number): { from: number; to: number }[] {
+    const kind = kindOf(row);
+    if (!kind) return weeks.map((_, wi) => ({ from: wi, to: wi }));
+    const grid = gridRef.current;
+    if (!grid) return [];
+    return Array.from(grid.querySelectorAll<HTMLElement>(`[data-plan="${kind}"]`))
+      .map((el) => ({ from: Number(el.dataset.from), to: Number(el.dataset.to) }))
+      .sort((a, b) => a.from - b.from);
+  }
+
+  /** Moves the cursor one cell. Sideways, a bar counts as one step however long it is;
+   *  up and down, the cursor lands on whatever covers its week in the next row that has
+   *  anything there, or stays put. */
+  function moveCursor(row: number, wi: number, dRow: number, dWi: number) {
+    moved.current = true;
+    if (dWi !== 0) {
+      const cells = cellsOf(row);
+      const at = cells.findIndex((c) => c.from <= wi && wi <= c.to);
+      const next = cells[(at === -1 ? cells.findIndex((c) => c.from > wi) - (dWi > 0 ? 1 : 0) : at) + dWi];
+      if (!next) return;
+      setCursor({ row, wi: dWi > 0 ? next.from : next.to });
+      return;
+    }
+    for (let r = row + dRow; r >= 0 && r <= LAST_ROW; r += dRow) {
+      const cells = cellsOf(r);
+      if (cells.some((c) => c.from <= wi && wi <= c.to)) {
+        setCursor({ row: r, wi });
+        return;
+      }
+    }
+  }
+
+  /** The two rules a macro's reach can break, said in words the coach can act on. Shared by
+   *  the bracket drag and Shift+arrow on the caption. */
+  function reachRefusal(reach: (typeof bars)[number][], macroId: string): string | null {
+    const owned = reach.find((b) => b.macroId !== null && b.macroId !== macroId);
+    if (owned) {
+      const other = macros.find((m) => m.id === owned.macroId);
+      return `${owned.name} is already in ${other?.name ?? "another macrocycle"}.`;
+    }
+    const twice = reach.find(
+      (b, i) => reach.findIndex((o) => o.name === b.name) !== i,
+    );
+    return twice ? `A macrocycle can't hold two blocks called ${twice.name}.` : null;
+  }
+  const liveReachRefusal = React.useRef(reachRefusal);
+  React.useEffect(() => {
+    liveReachRefusal.current = reachRefusal;
+  });
+
+  /** Why a block can't sit on these weeks, or null when it can — the same two rules the drag
+   *  and the dialog enforce, for the keyboard's moves, resizes and pastes. */
+  function placeRefusal(
+    range: { startsOn: string; endsOn: string },
+    except: string | null = null,
+  ): string | null {
+    const clash = bars.find((b) => b.id !== except && overlaps(range, b));
+    if (clash) return `That would overlap ${clash.name}.`;
+    return startsInPastWeek(range.startsOn, new Date())
+      ? "A block can't start in a week that has already passed."
+      : null;
+  }
+
+  /** The micros a block carries right now, as offsets from its start — local edits first,
+   *  since those are what the coach can see. */
+  function microsOf(bar: (typeof bars)[number]): ClipMicro[] {
+    return Array.from({ length: bar.span }, (_, i) => {
+      const week = bar.start + i;
+      const key = microKey(bar.id, week);
+      const local = labels[key];
+      const stored = microAt.get(key);
+      const label = local?.label ?? stored?.label ?? "";
+      const typeId = local ? local.typeId : (stored?.typeId ?? null);
+      return { offset: i, label, typeId };
+    }).filter((m) => m.label);
+  }
+
+  /** Nudges a block one week either way, refusing the same things a drop refuses. */
+  function nudgeBlock(bar: (typeof bars)[number], d: number) {
+    const to = { startsOn: shiftWeeks(bar.startsOn, d), endsOn: shiftWeeks(bar.endsOn, d) };
+    const why = placeRefusal(to, bar.id);
+    if (why) {
+      toast.error(why);
+      return;
+    }
+    // Silent, like the drag it mirrors: the opposite arrow is the undo.
+    setCursor((c) => ({ ...c, wi: c.wi + d }));
+    void place(bar, to, { startsOn: bar.startsOn, endsOn: bar.endsOn });
+  }
+
+  /** Grows or shrinks a block by one week at its end. Only the end: one edge per gesture,
+   *  and the start moves with Ctrl+arrow instead. */
+  function resizeBlock(bar: (typeof bars)[number], d: number) {
+    if (d < 0 && bar.span <= 1) return;
+    const to = { startsOn: bar.startsOn, endsOn: shiftWeeks(bar.endsOn, d) };
+    const why =
+      placeRefusal(to, bar.id) ?? dropRefusal(bar, to.startsOn, to.endsOn);
+    if (why) {
+      toast.error(why);
+      return;
+    }
+    void place(bar, to, { startsOn: bar.startsOn, endsOn: bar.endsOn });
+  }
+
+  /** Copies what is under the cursor. A block goes with its micros, a macro with every
+   *  block it holds — copying a phase is the point. */
+  function copyAt(ctx: KeyContext) {
+    let clip: Clip | null = null;
+    if (ctx.micro?.label) {
+      clip = { kind: "micro", label: ctx.micro.label, typeId: ctx.micro.typeId };
+    } else if (ctx.bar) {
+      clip = {
+        kind: "block",
+        name: ctx.bar.name,
+        typeId: ctx.bar.typeId,
+        span: ctx.bar.span,
+        micros: microsOf(ctx.bar),
+      };
+    } else if (ctx.macro) {
+      const held = bars.slice(ctx.macro.first, ctx.macro.last + 1);
+      clip = {
+        kind: "macro",
+        name: ctx.macro.macro.name,
+        typeId: ctx.macro.macro.typeId,
+        blocks: held.map((b) => ({
+          name: b.name,
+          typeId: b.typeId,
+          span: b.span,
+          offset: b.start - held[0].start,
+          micros: microsOf(b),
+        })),
+      };
+    }
+    if (!clip) return;
+    writeClip(clip);
+    toast(`Copied ${clipName(clip)}`);
+  }
+
+  /** Pastes at the cursor's week. A block lands with its start on that week; a macro's first
+   *  block does, and the rest follow at the spacing they were copied with. Nothing lands
+   *  unless all of it can — a half-pasted phase is worse than none. */
+  function pasteAt(ctx: KeyContext) {
+    const clip = readClip();
+    if (!clip) {
+      toast("Nothing to paste");
+      return;
+    }
+    if (clip.kind === "micro") {
+      if (!ctx.micro) {
+        toast.error("Move to a week inside a block to paste a microcycle.");
+        return;
+      }
+      writeMicro(ctx.micro.bar.id, ctx.micro.week, clip.label, clip.typeId);
+      return;
+    }
+    const anchor = toISODate(mondayOf(weeks[ctx.wi].monday));
+    const blocks = clip.kind === "block" ? [{ ...clip, offset: 0 }] : clip.blocks;
+    const placed = blocks.map((b) => {
+      const startsOn = shiftWeeks(anchor, b.offset);
+      return {
+        ...b,
+        startsOn,
+        endsOn: toISODate(sundayOf(fromISODate(shiftWeeks(startsOn, b.span - 1)))),
+      };
+    });
+    for (const b of placed) {
+      const why = placeRefusal(b);
+      if (why) {
+        toast.error(why);
+        return;
+      }
+    }
+    void (async () => {
+      const ids: string[] = [];
+      for (const b of placed) {
+        const made = await createTrainingBlock({
+          athleteId,
+          autoRename: true,
+          name: b.name,
+          startsOn: b.startsOn,
+          endsOn: b.endsOn,
+          typeId: b.typeId,
+        });
+        if (made.error || !made.id) {
+          toast.error(made.error ?? "Could not paste the block.");
+          return;
+        }
+        ids.push(made.id);
+        const results = await Promise.all(
+          b.micros.map((m) =>
+            setMicrocycle(made.id!, shiftWeeks(b.startsOn, m.offset), m.label, m.typeId),
+          ),
+        );
+        const failed = results.find((r) => r.error);
+        if (failed) toast.error(failed.error!);
+      }
+      if (clip.kind === "macro") {
+        const [first, ...rest] = ids;
+        const macro = await createMacrocycle(athleteId, first, clip.name, clip.typeId, true);
+        if (macro.error || !macro.id) {
+          toast.error(macro.error ?? "Could not paste the macrocycle.");
+          return;
+        }
+        for (const id of rest) {
+          const r = await setBlockMacrocycle(id, macro.id);
+          if (r.error) {
+            toast.error(r.error);
+            return;
+          }
+        }
+      }
+      toast(`Pasted ${clipName(clip)}`);
+    })();
+  }
+
+  /** Every key the calendar answers, on any cell. Enter is left to the buttons that already
+   *  answer it — a chip opens its picker, a caption its rename — and handled here only where
+   *  the cell is not a button. */
+  function onKey(e: React.KeyboardEvent, ctx: KeyContext) {
+    const { row, wi } = ctx;
+    const mod = e.ctrlKey || e.metaKey;
     const step: Record<string, [number, number]> = {
       ArrowLeft: [0, -1],
       ArrowRight: [0, 1],
       ArrowUp: [-1, 0],
       ArrowDown: [1, 0],
     };
-    if (e.key === "Enter" || e.key === " ") {
+    const delta = step[e.key];
+
+    if (delta && !mod && !e.shiftKey) {
       e.preventDefault();
-      // A week and a sensible length, then the modal — which is fully keyboard-operable —
-      // owns the rest. The pointer's range drag has no keyboard equivalent by design: two
-      // corners is what a dialog is for.
-      setCreating({ startsOn: toISODate(mondayOf(weeks[wi].monday)) });
+      moveCursor(row, wi, delta[0], delta[1]);
       return;
     }
-    const delta = step[e.key];
-    if (!delta) return;
-    e.preventDefault();
-    moved.current = true;
-    setCursor({
-      d: Math.min(Math.max(d + delta[0], 0), WEEKDAYS.length - 1),
-      wi: Math.min(Math.max(wi + delta[1], 0), weeks.length - 1),
-    });
+    if (delta && delta[1] !== 0 && e.shiftKey && !mod) {
+      e.preventDefault();
+      if (ctx.bar) resizeBlock(ctx.bar, delta[1]);
+      else if (ctx.macro) {
+        const { macro, first, last } = ctx.macro;
+        const next = last + delta[1];
+        if (next < first || next >= bars.length) return;
+        const why = reachRefusal(bars.slice(first, next + 1), macro.id);
+        if (why) toast.error(why);
+        else applyBracket(macro.id, first, next);
+      }
+      return;
+    }
+    if (delta && delta[1] !== 0 && mod) {
+      e.preventDefault();
+      if (ctx.bar) nudgeBlock(ctx.bar, delta[1]);
+      else if (ctx.micro?.label) {
+        const { bar, week } = ctx.micro;
+        const to = week + delta[1];
+        if (to < bar.start || to > bar.start + bar.span - 1) return;
+        reorderMicros(bar, week, to);
+        moved.current = true;
+        setCursor({ row, wi: to });
+      }
+      return;
+    }
+    if (mod && (e.key === "c" || e.key === "x")) {
+      e.preventDefault();
+      copyAt(ctx);
+      if (e.key === "x") removeAt(ctx);
+      return;
+    }
+    if (mod && e.key === "v") {
+      e.preventDefault();
+      pasteAt(ctx);
+      return;
+    }
+    if (e.key === "Delete" || e.key === "Backspace") {
+      e.preventDefault();
+      removeAt(ctx);
+      return;
+    }
+    if ((e.key === "Enter" || e.key === " ") && !ctx.micro && !ctx.macro) {
+      e.preventDefault();
+      // A bar opens its own weeks in the planner below, the same thing a press on it does —
+      // activating a block means working on it, not editing its dates. Those stay one step
+      // away, on the ⋯ menu and the right-click, both of which the keyboard reaches. A day or
+      // an empty week starts a block there: a week and a sensible length, then the modal,
+      // which is fully keyboard-operable, owns the rest.
+      if (ctx.bar) onSelectBlock(ctx.bar.id);
+      else setCreating({ startsOn: toISODate(mondayOf(weeks[wi].monday)) });
+    }
   }
 
-  // Double click arms the range; from there the pointer extends it with no button held, and
-  // the next click closes it. The earlier version asked you to hold the second click down,
-  // which meant an ordinary double click released immediately and shipped a one-week block.
-  function arm(e: React.SyntheticEvent, week: number) {
-    e.preventDefault();
+  /** Deletes what is under the cursor, each with the Undo its pointer path already has. */
+  function removeAt(ctx: KeyContext) {
+    if (ctx.micro?.label) writeMicro(ctx.micro.bar.id, ctx.micro.week, "");
+    else if (ctx.bar) removeBlock(ctx.bar);
+    else if (ctx.macro) removeMacro(ctx.macro.macro);
+  }
+
+  /** One tab stop for the whole card: the cell the cursor is on. */
+  const tab = (row: number, from: number, to = from) =>
+    cursor.row === row && cursor.wi >= from && cursor.wi <= to ? 0 : -1;
+  /** Clicking a cell moves the cursor to it, so the arrows carry on from where the pointer
+   *  left off. A bar keeps the week the cursor already had if it is one of its own. */
+  const land = (row: number, from: number, to = from) => () =>
+    setCursor((c) =>
+      c.row === row && c.wi >= from && c.wi <= to ? c : { row, wi: from },
+    );
+
+  /** A press on a day that hasn't become a drag yet: where it started, so the range can open
+   *  from that week once the pointer has travelled far enough to mean it. */
+  /** Whether a range is being drawn with the pointer up. Held as a ref beside the `drag` state
+   *  the rest of the calendar already paints from: the band, the week numbers and the refusal
+   *  all read `drag`, so the gesture changed and nothing downstream had to. */
+  const drawing = React.useRef(false);
+
+  // Double-click a week, move across the ones you want, click: the range follows the pointer
+  // with nothing held down. Holding a button across 20 columns of a year is a long way to ask
+  // a hand to stay clenched, and a slip mid-way ends the gesture where the hand gave out.
+  function startDraw(week: number) {
+    drawing.current = true;
     setDrag({ from: week, to: week });
   }
 
-  // The commit handler needs the range as it stands when you click, not the one the gesture
-  // started with — but it reads that off `live` rather than by re-subscribing on every
-  // pointermove, which is what naming `drag` as a dependency used to cost.
-  const arming = drag !== null;
   React.useEffect(() => {
-    if (!arming) return;
     const onMove = (e: PointerEvent) => {
+      if (!drawing.current) return;
       const cell = (e.target as HTMLElement | null)?.closest?.("[data-week]");
       const week = cell?.getAttribute("data-week");
-      if (week != null) setDrag((d) => (d ? { ...d, to: Number(week) } : d));
+      if (week == null) return;
+      const to = Number(week);
+      setDrag((d) => (d && d.to !== to ? { ...d, to } : d));
     };
-    const onCommit = (e: PointerEvent) => {
-      if (e.button !== 0) return;
-      e.preventDefault();
+    // The click that closes the range. Bound while drawing only, so the second click of the
+    // double-click that opened it — which has already fired by the time this listener exists —
+    // can't close the range on the week it just started.
+    const onClick = () => {
+      if (!drawing.current) return;
+      drawing.current = false;
       const { drag: range, draftRefusal: refusal } = live.current;
       setDrag(null);
       if (!range) return;
@@ -1011,19 +1399,21 @@ export function YearCalendar({
         endsOn: toISODate(sundayOf(weeks[to].monday)),
       });
     };
-    // Nothing is held down, so there is no release to bail out with — Escape is the way out.
+    // Escape drops the range mid-draw, the same way it drops a carried bar or chip.
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setDrag(null);
+      if (e.key !== "Escape") return;
+      drawing.current = false;
+      setDrag(null);
     };
     window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerdown", onCommit);
+    window.addEventListener("click", onClick);
     window.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerdown", onCommit);
+      window.removeEventListener("click", onClick);
       window.removeEventListener("keydown", onKey);
     };
-  }, [arming, weeks]);
+  }, [weeks]);
 
   const landed = React.useRef(false);
   React.useEffect(() => {
@@ -1045,7 +1435,7 @@ export function YearCalendar({
   // landing on exactly the right block.
   const applyBracket = React.useCallback(
     (macroId: string, first: number, last: number) => {
-      const { bars, macros } = live.current;
+      const { bars } = live.current;
       const held = bars.filter((b) => b.macroId === macroId).map((b) => b.id);
       const want = bars.slice(first, last + 1).map((b) => b.id);
       const added = want.filter((id) => !held.includes(id));
@@ -1056,21 +1446,9 @@ export function YearCalendar({
         ...Object.fromEntries(added.map((id) => [id, macroId])),
         ...Object.fromEntries(removed.map((id) => [id, null])),
       };
-      // Where each of those blocks sat before, which is the undo of `to` block for block.
-      const back = Object.fromEntries(
-        [...added, ...removed].map((id) => [
-          id,
-          bars.find((b) => b.id === id)?.macroId ?? null,
-        ]),
-      );
-      const name = macros.find((m) => m.id === macroId)?.name ?? "Macrocycle";
-      void assign(to).then((ok) => {
-        if (!ok) return;
-        toast(
-          `${name} now holds ${want.length} ${want.length === 1 ? "block" : "blocks"}`,
-          { action: { label: "Undo", onClick: () => void assign(back) } },
-        );
-      });
+      // Silent, like a block's own move and resize: the bracket already shows its new reach,
+      // and dragging the edge back one block is the undo. A refusal still speaks.
+      void assign(to);
     },
     [assign],
   );
@@ -1081,40 +1459,21 @@ export function YearCalendar({
     const onMove = (e: PointerEvent) => {
       const rect = gridRef.current?.getBoundingClientRect();
       if (!rect) return;
-      const { bars, macros } = live.current;
-      /** The two rules a reach can break, said in words the coach can act on. */
-      const refuses = (
-        reach: (typeof bars)[number][],
-        macroId: string,
-      ): string | null => {
-        const owned = reach.find(
-          (b) => b.macroId !== null && b.macroId !== macroId,
-        );
-        if (owned) {
-          const other = macros.find((m) => m.id === owned.macroId);
-          return `${owned.name} is already in ${other?.name ?? "another macrocycle"}.`;
-        }
-        const twice = reach.find(
-          (b, i) => reach.findIndex((o) => o.name === b.name) !== i,
-        );
-        return twice
-          ? `A macrocycle can't hold two blocks called ${twice.name}.`
-          : null;
-      };
+      const { bars } = live.current;
       const column = Math.floor((e.clientX - rect.left - AXIS_PX) / COLUMN_PX);
       const i = bars.findIndex(
         (b) => column >= b.start && column < b.start + b.span,
       );
       // Off any block: empty weeks can't be in a macro, so the edge just stays put.
       if (i === -1) return;
-      setMacroDrag((g) => {
-        if (!g) return g;
-        const first = g.edge === "start" ? i : g.first;
-        const last = g.edge === "end" ? i : g.last;
-        // The edges may not cross: a macro always holds at least the block it started on.
-        if (first > last) return g;
-        return { ...g, first, last, reason: refuses(bars.slice(first, last + 1), g.id) };
-      });
+      const g = live.current.macroDrag;
+      if (!g) return;
+      const first = g.edge === "start" ? i : g.first;
+      const last = g.edge === "end" ? i : g.last;
+      // The edges may not cross: a macro always holds at least the block it started on.
+      if (first > last) return;
+      const reason = liveReachRefusal.current(bars.slice(first, last + 1), g.id);
+      setMacroDrag((d) => (d ? { ...d, first, last, reason } : d));
     };
     const onUp = () => {
       const g = live.current.macroDrag;
@@ -1122,12 +1481,15 @@ export function YearCalendar({
       else if (g) applyBracket(g.id, g.first, g.last);
       setMacroDrag(null);
     };
+    // setProperty rather than assignment: the compiler's lint reads a property write on a
+    // global inside this particular effect as a render-time mutation, and a method call
+    // says the same thing without tripping it.
     const previous = document.body.style.cursor;
-    document.body.style.cursor = "ew-resize";
+    document.body.style.setProperty("cursor", "ew-resize");
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     return () => {
-      document.body.style.cursor = previous;
+      document.body.style.setProperty("cursor", previous);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
     };
@@ -1154,23 +1516,12 @@ export function YearCalendar({
       ] as const;
     }),
   );
-  /** Whether the micro row is drawn at all: only once a block on screen has one, or while a
-   *  block is hovered and the offers are showing. Otherwise the bracket sits straight under
-   *  the bars instead of a row away from them. */
-  const microRowOpen =
-    hovered !== null || micros.some((m) => bars.some((b) => b.id === m.blockId));
   /** Whether the year has been scrolled off its own start, which is when the left edge needs
    *  telling apart from the beginning of January. */
   const [edges, setEdges] = React.useState({ start: false, end: true });
-  /** The overlay scrollbar's thumb, as fractions of the visible track. Derived from the same
-   *  scroll listener the fades use, so it costs nothing extra. */
-  const [thumb, setThumb] = React.useState({ left: 0, width: 1 });
-  /** Whether the pointer has come down to where the scrollbar lives. State rather than a CSS
-   *  `group-hover`: the bar also has to stay up while a block is being carried, and the reveal
-   *  is a distance, not a boundary — the bar is 2px of furniture and should only surface for
-   *  someone reaching for it. */
-  const [nearBar, setNearBar] = React.useState(false);
-  const [barDrag, setBarDrag] = React.useState(false);
+  /** Whether today's week is on screen, read back after a resize to decide whether recentring
+   *  would be putting the view back or taking it away. */
+  const onToday = React.useRef(true);
   React.useEffect(() => {
     const track = gridRef.current?.closest<HTMLElement>(
       "[data-geist-scroller-container]",
@@ -1182,20 +1533,32 @@ export function YearCalendar({
       setEdges((prev) =>
         prev.start === start && prev.end === end ? prev : { start, end },
       );
-      setThumb({
-        left: track.scrollLeft / track.scrollWidth,
-        width: track.clientWidth / track.scrollWidth,
-      });
+      const cell = todayRef.current?.getBoundingClientRect();
+      const box = track.getBoundingClientRect();
+      onToday.current =
+        !!cell && cell.left >= box.left + AXIS_PX && cell.right <= box.right;
     };
     onScroll();
     track.addEventListener("scroll", onScroll, { passive: true });
-    const observer = new ResizeObserver(onScroll);
+    // A resize keeps the scroll offset in pixels, which is not where the coach was looking:
+    // a narrower window slides this week off the right edge and leaves the view on a stretch
+    // of the year nobody asked for. Only for someone who was on today's week — anyone who
+    // had scrolled away to March is left in March, which is where they put themselves.
+    const observer = new ResizeObserver(() => {
+      if (onToday.current)
+        todayRef.current?.scrollIntoView({
+          block: "nearest",
+          inline: "center",
+          behavior: "instant",
+        });
+      onScroll();
+    });
     observer.observe(track);
     return () => {
       track.removeEventListener("scroll", onScroll);
       observer.disconnect();
     };
-  }, []);
+  }, [today, year]);
 
   // A wheel is vertical and this calendar is not. A trackpad sends deltaX and already works;
   // a mouse sends deltaY and used to do nothing at all unless you knew to hold Shift. Passing
@@ -1222,14 +1585,7 @@ export function YearCalendar({
     return () => track.removeEventListener("wheel", onWheel);
   }, []);
 
-  /** How close to an edge the pointer has to be before the year starts moving under it, and
-   *  how fast it goes when it is right up against it. */
-  /** Something is being carried across the year: snapping steps aside for all of it. */
-  const carrying =
-    gesture !== null || macroDrag !== null || drag !== null || barDrag;
-  /** …but only a gesture over the grid itself asks the year to run at the edges. Dragging the
-   *  scrollbar already moves it, and adding the edge scroll on top would double the speed the
-   *  moment the thumb reached the end of its rail. */
+  /** Something is being carried across the year, which asks the year to run at the edges. */
   const draggingContent =
     gesture !== null || macroDrag !== null || drag !== null;
   React.useEffect(() => {
@@ -1274,51 +1630,6 @@ export function YearCalendar({
       cancelAnimationFrame(frame);
     };
   }, [draggingContent]);
-
-  /** Dragging the overlay bar. The track moves by the same fraction of its own width that the
-   *  pointer covers of the bar's, which is what makes the thumb stay under the finger. */
-  function grabBar(e: React.PointerEvent) {
-    e.preventDefault();
-    const track = gridRef.current?.closest<HTMLElement>(
-      "[data-geist-scroller-container]",
-    );
-    const rail = e.currentTarget as HTMLElement;
-    if (!track) return;
-    const width = rail.getBoundingClientRect().width;
-    const startX = e.clientX;
-    const startLeft = track.scrollLeft;
-    setBarDrag(true);
-
-    // The pointer can report several times between two frames. Writing scrollLeft on each of
-    // them makes the year stutter — the browser paints once but the value has already jumped
-    // twice. Landing the newest position once per frame is what makes the drag feel attached
-    // to the pointer instead of stepped.
-    let wanted = startLeft;
-    let frame = 0;
-    const apply = () => {
-      frame = 0;
-      track.scrollLeft = wanted;
-    };
-    const onMove = (m: PointerEvent) => {
-      wanted = startLeft + ((m.clientX - startX) / width) * track.scrollWidth;
-      if (!frame) frame = requestAnimationFrame(apply);
-    };
-    const onUp = () => {
-      if (frame) cancelAnimationFrame(frame);
-      track.scrollLeft = wanted;
-      setBarDrag(false);
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-    };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-  }
-
-  /** How far the bracket rides up over an empty micro row. Applied to all three bracket slots
-   *  — the real ones, their spacer and the ghost — so they travel together. */
-  const lift = microRowOpen
-    ? undefined
-    : `translateY(-${MICRO_ROW_HEIGHT}px)`;
 
   /** Writes one week's label, or clears the week when the box is emptied. Held locally first:
    *  typing a letter shouldn't wait for a round-trip to show up. */
@@ -1408,6 +1719,7 @@ export function YearCalendar({
         return;
       }
       toast(`${bar.name} moved to ${target + 1} of ${run.length}`, {
+        duration: UNDO_DURATION,
         action: {
           label: "Undo",
           onClick: () => {
@@ -1491,13 +1803,15 @@ export function YearCalendar({
         // and the row beyond it belongs to a different one.
         const bar = live.current.bars.find((b) => b.id === g.blockId);
         if (!bar) return g;
-        const steps = Math.round((e.clientX - g.startX) / COLUMN_PX);
-        const target = Math.min(
-          bar.start + bar.span - 1,
-          Math.max(bar.start, g.from + steps),
+        const last = bar.start + bar.span - 1;
+        // The chip follows the pointer 1:1 and only the slot it will land on is quantised —
+        // a chip that jumped a column at a time read as stuck between steps.
+        const dx = Math.min(
+          Math.max(e.clientX - g.startX, (bar.start - g.from) * COLUMN_PX),
+          (last - g.from) * COLUMN_PX,
         );
-        const delta = target - g.from;
-        return delta === g.delta ? g : { ...g, delta };
+        const delta = Math.round(dx / COLUMN_PX);
+        return dx === g.dx && delta === g.delta ? g : { ...g, dx, delta };
       });
     };
     const onUp = () => {
@@ -1505,6 +1819,9 @@ export function YearCalendar({
       setMicroGrab(null);
       const bar = g && live.current.bars.find((b) => b.id === g.blockId);
       if (g && bar && g.delta !== 0) {
+        // The click the browser fires after this release would open the picker on the chip
+        // that was just carried; the capture handler on the chip's cell swallows it.
+        microDragged.current = true;
         liveReorder.current(bar, g.from, g.from + g.delta);
       }
     };
@@ -1532,6 +1849,11 @@ export function YearCalendar({
    *  action. */
   const blockMenu = (block: TrainingBlock) => [
     { label: "Edit", onSelect: () => setEditing(block) },
+    // The same offer the dashed band over the bar makes, for a keyboard or a trackpad that
+    // never hovers.
+    ...(block.macroId === null
+      ? [{ label: "Start macrocycle", onSelect: () => setNaming(block.id) }]
+      : []),
     { separator: true },
     {
       label: "Delete",
@@ -1554,6 +1876,7 @@ export function YearCalendar({
         ...Object.fromEntries(members.map((id) => [id, null])),
       }));
       toast(`${macro.name} deleted`, {
+        duration: UNDO_DURATION,
         action: {
           label: "Undo",
           onClick: () => {
@@ -1583,11 +1906,6 @@ export function YearCalendar({
     });
   }
 
-  /** The block a new macro is being named for. A macro is a coach's own vocabulary — the app
-   *  inventing "Macro 3" and making them rename it afterwards is one step too many, and the
-   *  name it picks is wrong every time. */
-  const [naming, setNaming] = React.useState<string | null>(null);
-
   return (
     <div className="flex flex-col gap-3">
       <div className="flex h-8 items-center gap-1">
@@ -1600,7 +1918,7 @@ export function YearCalendar({
         >
           <ChevronLeftIcon className="size-4" />
         </Button>
-        <span className="text-sm font-medium text-[var(--ds-gray-1000)]">
+        <span className="text-label-14 font-medium text-[var(--ds-gray-1000)]">
           {year}
         </span>
         <Button
@@ -1641,22 +1959,25 @@ export function YearCalendar({
 
       <div
         className={cn(
-          // pb closes the card 14px under the macro rule — the same 14px the rule keeps from
-          // the micros above it. The slot already leaves 10.5px of its own below the stroke,
-          // so the padding is what is left of the pair.
-          "material-menu relative px-3 pt-2.5 pb-[3.5px]",
-          NO_SCROLLBAR,
+          // A bordered card, not a floating menu: this is content on the page, and a popover's
+          // shadow under it said "this will close".
+          "relative rounded-xl border border-[var(--ds-gray-alpha-400)] bg-[var(--ds-background-100)] px-3 pt-2.5 pb-1.5",
           NO_BOUNCE,
-          SNAP_TO_WEEKS,
-          // Any gesture that carries something across the year owns the track while it lasts.
-          carrying && NO_SNAP,
+          NO_SCROLLBAR,
         )}
         style={{ "--axis": AXIS_COLUMN } as React.CSSProperties}
-        onPointerMove={(e) => {
-          const bottom = e.currentTarget.getBoundingClientRect().bottom;
-          setNearBar(e.clientY > bottom - BAR_REACH);
+        // A press on bare card — the margins, the axis, the space under the plan — hands the
+        // keyboard the calendar, on whatever cell the cursor was left at. Pressing a day, a
+        // bar or a chip already focuses it; this is the rest of the surface, which otherwise
+        // took the focus away and left the arrows scrolling the page. preventDefault is what
+        // keeps the browser from blurring what we just focused.
+        onPointerDown={(e) => {
+          const el = e.target as HTMLElement | null;
+          if (el?.closest("[tabindex], button, a, input, [role='button']")) return;
+          e.preventDefault();
+          moved.current = true;
+          cursorElement(cursor.row, cursor.wi)?.focus();
         }}
-        onPointerLeave={() => setNearBar(false)}
       >
         {/* Neither edge is left to the Scroller: its fade is a mask over the whole track, so
             the leading one would take the sticky M–S axis with it and both would erase the
@@ -1672,15 +1993,27 @@ export function YearCalendar({
             ref={gridRef}
             role="grid"
             aria-label={`${year} training plan`}
+            // Nine: the month captions, the week numbers and the seven weekday rows. The plan
+            // below them is a group, not a row, so it is not counted here either.
             aria-rowcount={WEEKDAYS.length + 2}
             aria-colcount={weeks.length + 1}
             // The only place the hover is dropped. Clearing it on the block's own mouseleave
             // read as a flicker: the grid's 8px row gap sits between a block and the ghost it
             // offers, so crossing it took the offer away before the pointer could reach it.
-            onPointerLeave={() => setHovered(null)}
+            onPointerLeave={() => {
+              setHovered(null);
+              setNearWeek(null);
+            }}
+            onPointerMove={(e) => {
+              const rect = gridRef.current?.getBoundingClientRect();
+              if (!rect) return;
+              const column = Math.floor(
+                (e.clientX - rect.left - AXIS_PX) / COLUMN_PX,
+              );
+              setNearWeek((prev) => (prev === column ? prev : column));
+            }}
             className={cn(
-              "relative isolate grid w-max gap-y-2",
-              drag && "select-none",
+              "group/grid relative isolate grid w-max gap-y-2 select-none",
             )}
             style={{
               gridTemplateColumns: `var(--axis) repeat(${weeks.length}, ${COLUMN})`,
@@ -1688,17 +2021,27 @@ export function YearCalendar({
             }}
           >
             {/* `contents` rows: the roles land on real elements without any of them becoming a
-                grid item, so the single 53-column track keeps placing the cells itself. */}
+                grid item, so the single 53-column track keeps placing the cells itself.
+                Every cell names its own row and column rather than being auto-placed — one
+                item with a definite position anywhere in the matrix (the blocks' light) would
+                otherwise be an obstacle the auto-placer flows the whole year around. */}
             <div role="row" className="contents">
-              <div className={cn(STICKY, "h-[21px]")} aria-hidden />
-              {months.map(({ month, span }) => (
+              <div
+                className={cn(STICKY, "h-[21px]")}
+                style={{ gridRow: 1, gridColumn: 1 }}
+                aria-hidden
+              />
+              {months.map(({ month, span }, mi) => (
               <div
                 key={month}
                 role="columnheader"
-                style={{ gridColumn: `span ${span}` }}
+                style={{
+                  gridRow: 1,
+                  gridColumn: `${2 + months.slice(0, mi).reduce((n, m) => n + m.span, 0)} / span ${span}`,
+                }}
                 className={cn(
-                  "flex h-[21px] items-center justify-center text-[var(--ds-gray-1000)]",
-                  GRID_TEXT,
+                  "flex h-[21px] items-center justify-center",
+                  MONTH_CAPTION,
                 )}
               >
                 {MONTHS[month]}
@@ -1707,17 +2050,24 @@ export function YearCalendar({
             </div>
 
             <div role="row" className="contents">
-              <div className={cn(STICKY, "mb-3 h-[18px]")} aria-hidden />
+              <div
+                className={cn(STICKY, "mb-3 h-[18px]")}
+                style={{ gridRow: 2, gridColumn: 1 }}
+                aria-hidden
+              />
               {weeks.map((w, wi) => (
               <div
                 key={w.week}
                 role="columnheader"
                 aria-label={`Week ${w.week}`}
+                style={{ gridRow: 2, gridColumn: 2 + wi }}
                 className={cn(
-                  WEEK_NUMBER,
-                  draftAt(wi) && "text-[var(--ds-gray-1000)]",
-                  // One snap target per column — the day cells below share its x.
-                  "mb-3 flex h-[18px] snap-start items-center justify-center",
+                  AXIS_TEXT,
+                  // Lit for a range that can still become a block, left alone for one that
+                  // can't: the axis is what confirms the reach, and confirming a refused one
+                  // would be the calendar agreeing with a gesture it is about to turn away.
+                  draftAt(wi) && !draftRefusal && "text-[var(--ds-gray-1000)]",
+                  "mb-3 flex h-[18px] items-center justify-center",
                 )}
               >
                 {w.week}
@@ -1732,10 +2082,13 @@ export function YearCalendar({
                   // "M T W T F S S" has two Ts and two Ss; the full name is what a screen
                   // reader should hear, and the letter is what the grid has room for.
                   aria-label={WEEKDAY_NAMES[d]}
+                  style={{ gridRow: 3 + d, gridColumn: 1 }}
                   className={cn(
                     STICKY,
-                    GRID_TEXT,
-                    "flex h-8 items-center justify-center pr-4 text-[var(--ds-gray-1000)]",
+                    // Read as the other caption over the matrix, not as week-number
+                    // scaffolding: the same size, weight and tone the months are set in.
+                    MONTH_CAPTION,
+                    "flex h-8 items-center justify-center pr-4",
                   )}
                 >
                   {label}
@@ -1748,16 +2101,18 @@ export function YearCalendar({
                     <div
                       key={w.week}
                       ref={isToday ? todayRef : undefined}
+                      style={{ gridRow: 3 + d, gridColumn: 2 + wi }}
                       data-week={wi}
                       data-cell={`${d}-${wi}`}
                       role="gridcell"
-                      // One tab stop for the whole matrix, then the arrows walk it — 371
+                      // One tab stop for the whole card, then the arrows walk it — 371
                       // separate stops would be a trap rather than access.
-                      tabIndex={cursor.d === d && cursor.wi === wi ? 0 : -1}
+                      tabIndex={tab(d, wi)}
                       aria-label={dayTitle(date, meet?.name)}
                       aria-current={isToday ? "date" : undefined}
-                      onKeyDown={(e) => onCellKey(e, d, wi)}
-                      onDoubleClick={(e) => arm(e, wi)}
+                      onKeyDown={(e) => onKey(e, { row: d, wi })}
+                      onFocus={land(d, wi)}
+                      onDoubleClick={() => startDraw(wi)}
                       className={cn(
                         DAY_CELL,
                         // Today outranks a meet on the day they coincide: it is the only
@@ -1774,6 +2129,11 @@ export function YearCalendar({
                                   dayTone(date, year),
                                   "hover:bg-[var(--ds-gray-alpha-200)]",
                                 )),
+                        // No keyboard cursor while a range is being painted. The ring is
+                        // --ds-gray-1000 and so is the band's own end cap, so the cell the
+                        // gesture started on came out as a wider, whiter square rather than
+                        // as a ring — and nothing is being driven by the arrows mid-drag.
+                        draft && "focus:outline-none",
                         // The band wins over hover, tone, today and a meet alike: one box per
                         // column, tinted by whatever the day is.
                         draftAt(wi) &&
@@ -1784,8 +2144,12 @@ export function YearCalendar({
                               : meet
                                 ? DRAFT_MEET
                                 : draftAt(wi) === "edge"
-                                  ? DRAFT_EDGE
-                                  : DRAFT_FILL,
+                                  ? draftRefusal
+                                    ? DRAFT_EDGE_REFUSED
+                                    : DRAFT_EDGE
+                                  : draftRefusal
+                                    ? DRAFT_FILL_REFUSED
+                                    : DRAFT_FILL,
                             d === 0 && wi === draft!.start && "rounded-tl-md",
                             d === 0 &&
                               wi === draft!.start + draft!.span - 1 &&
@@ -1798,7 +2162,9 @@ export function YearCalendar({
                               "rounded-br-md",
                           ),
                       )}
-                      title={dayTitle(date, meet?.name)}
+                      // Only a meet day carries a native tooltip: the digit says what day
+                      // it is, and 371 tooltips saying it again were noise under every hover.
+                      title={meet ? dayTitle(date, meet.name) : undefined}
                     >
                       {date.getDate()}
                     </div>
@@ -1807,37 +2173,77 @@ export function YearCalendar({
               </div>
             ))}
 
-            {/* Everything below the day matrix — bars, micro chips and brackets — is one row
-                of the grid as far as assistive tech is concerned. Splitting it into three
-                would mean reordering the JSX, and the visual rows are already carried by the
-                grid-row placement each item sets for itself. */}
-            <div role="row" aria-label="Plan" className="contents">
-            {/* Holds the block row open when nothing is in it. Grid rows only exist where
-                something is placed, so the first block used to grow the card by its own height
-                — the calendar jumping under the pointer at the exact moment of the drop. */}
+            {/* Everything below the day matrix — bars, micro chips and brackets — as a group,
+                not a row. It was a `row` for a while, which made the grid promise something it
+                can't keep: a row's children have to be cells, and three tiers stacked on the
+                same columns (the bar, its weeks under it, the macro caption under those) are
+                not one row of them. The day matrix is the table — nine rows of real cells —
+                and this is the plan drawn against it, reached by the same arrow keys either
+                way, since the cursor is the roving tabindex and not the ARIA structure. */}
+            <div role="group" aria-label="Plan" className="contents">
+            {/* Holds each of the three rows open when nothing is in it. Grid rows only exist
+                where something is placed, so the first mark in a row used to grow the card by
+                its own height — the calendar jumping under the pointer at the exact moment of
+                the drop. */}
+            <div
+              aria-hidden
+              style={{ gridRow: MACRO_ROW, gridColumn: 1 }}
+              className={cn(MACRO_SLOT, "pointer-events-none h-6")}
+            />
             <div
               aria-hidden
               style={{ gridRow: BLOCK_ROW, gridColumn: 1 }}
               className={cn(BLOCK_SLOT, "pointer-events-none h-8")}
             />
+            <div
+              aria-hidden
+              style={{ gridRow: MICRO_ROW, gridColumn: 1 }}
+              className={cn(MICRO_SLOT, "pointer-events-none h-6")}
+            />
 
-            {/* Every bar carries an explicit row as well as its columns. With only a column
+            {/* Every week no bar and no offer covers, as a cell the cursor can stand on: Enter
+                starts a block there, Ctrl+V pastes one. Nothing to see until it has the
+                focus. The offers are cells of their own, so the cursor lands on the whole
+                silhouette rather than on one week of it. */}
+            {weeks.map((w, wi) =>
+              bars.some((b) => b.start <= wi && wi < b.start + b.span) ||
+              shownOffers.some((s) => s <= wi && wi < s + OFFER_WEEKS) ? null : (
+                <button
+                  key={`slot-${wi}`}
+                  type="button"
+                  aria-label={`Week ${w.week}, no block`}
+                  data-plan="block"
+                  data-from={wi}
+                  data-to={wi}
+                  tabIndex={tab(rowOf("block"), wi)}
+                  onKeyDown={(e) => onKey(e, { row: rowOf("block"), wi })}
+                  onFocus={land(rowOf("block"), wi)}
+                  style={{ gridRow: BLOCK_ROW, gridColumn: 2 + wi }}
+                  className={cn(BLOCK_SLOT, EMPTY_SLOT)}
+                />
+              ),
+            )}
+
+            {/* Every mark carries an explicit row as well as its columns. With only a column
                 the auto-placement algorithm places it before the auto items and it lands in
                 row 1, on top of the month captions. */}
             {/* Hidden while a range is being drawn: the drag has its own silhouette, and a
                 second one under the pointer would be two answers to the same question. */}
-            {!draft &&
-              offers.map((start) => (
+            {shownOffers.map((start) => (
                 <button
                   key={`offer-${start}`}
                   type="button"
                   aria-label={`New ${OFFER_WEEKS}-week block`}
+                  data-plan="block"
+                  data-from={start}
+                  data-to={start + OFFER_WEEKS - 1}
+                  tabIndex={tab(rowOf("block"), start, start + OFFER_WEEKS - 1)}
+                  onKeyDown={(e) => onKey(e, { row: rowOf("block"), wi: start })}
+                  onFocus={land(rowOf("block"), start, start + OFFER_WEEKS - 1)}
                   style={{
                     gridRow: BLOCK_ROW,
                     gridColumn: `${2 + start} / span ${OFFER_WEEKS}`,
                   }}
-                  // Keeps the press off the window listener that closes an armed range.
-                  onPointerDown={(e) => e.stopPropagation()}
                   onClick={() =>
                     setCreating({
                       startsOn: toISODate(mondayOf(weeks[start].monday)),
@@ -1846,21 +2252,34 @@ export function YearCalendar({
                       ),
                     })
                   }
+                  // The keyboard lights the silhouette the way the pointer does — no ring
+                  // around it, the dashes and the label themselves go to full contrast.
                   className={cn(
                     BLOCK_SLOT,
-                    "min-w-0 cursor-pointer opacity-0 transition-opacity hover:opacity-100 focus-visible:opacity-100",
+                    "group/offer min-w-0 cursor-pointer outline-none",
+                    OFFER_REVEAL,
+                    nearWeek !== null &&
+                      nearWeek >= start - OFFER_REACH &&
+                      nearWeek <= start + OFFER_WEEKS - 1 + OFFER_REACH &&
+                      "opacity-60",
                   )}
                 >
                   {/* The empty micro week's own surface, on a block-sized bar: the two are the
                       same offer a tier apart, and a filled preview would read as a block that
-                      is already there. justify-center, not BLOCK_BAR's left alignment — the
-                      label names the action rather than measuring the range, and "press here"
-                      belongs on the middle of what you press. */}
-                  <span className={cn(BLOCK_BAR, GHOST, "w-full justify-center")}>
+                      is already there. */}
+                  <span
+                    className={cn(
+                      BLOCK_BAR,
+                      GHOST,
+                      "w-full justify-center group-focus-visible/offer:text-[var(--ds-gray-1000)] group-focus-visible/offer:[--dash:var(--ds-gray-1000)]",
+                    )}
+                  >
+                    <DashedBox width={silhouetteWidth(OFFER_WEEKS)} height={32} />
+                    <PlusIcon className="size-3.5 shrink-0" />
                     <span className="min-w-0 truncate">New block</span>
                   </span>
                 </button>
-              ))}
+            ))}
 
             {/* Nothing to preview when the range can't become a block: the silhouette answers
                 "here is the bar you are about to get", and drawing one for a range that will be
@@ -1876,6 +2295,7 @@ export function YearCalendar({
                 className={cn(BLOCK_SLOT, "min-w-0")}
               >
                 <div className={BLOCK_DRAFT}>
+                  <DashedBox width={silhouetteWidth(draft.span)} height={32} />
                   <span className="min-w-0 truncate">
                     {draft.span} {draft.span === 1 ? "week" : "weeks"}
                   </span>
@@ -1912,7 +2332,6 @@ export function YearCalendar({
                 (mode: "move" | "start" | "end") => (e: React.PointerEvent) => {
                   if (e.button !== 0 || drag) return;
                   e.preventDefault();
-                  // Keeps the press off the window listener that closes an armed range.
                   e.stopPropagation();
                   setGesture({
                     id: b.id,
@@ -1949,81 +2368,81 @@ export function YearCalendar({
                     <div
                       // The bar is the keyboard's way in: Enter opens the same dialog the
                       // right-click Edit does, and that dialog can already do everything the
-                      // drag gestures can — move the start, change the length, delete.
+                      // drag gestures can — move the start, change the length.
                       role="button"
-                      tabIndex={0}
+                      data-plan="block"
+                      data-from={b.start}
+                      data-to={last}
+                      tabIndex={tab(rowOf("block"), b.start, last)}
                       aria-label={`${b.name}, ${b.span} ${b.span === 1 ? "week" : "weeks"} from ${b.startsOn}`}
-                      onKeyDown={(e) => {
-                        if (e.key !== "Enter" && e.key !== " ") return;
-                        e.preventDefault();
-                        setEditing(b);
-                      }}
+                      onKeyDown={(e) =>
+                        onKey(e, { row: rowOf("block"), wi: cursor.wi, bar: b })
+                      }
+                      onFocus={land(rowOf("block"), b.start, last)}
+                      // Pressing the bar opens its weeks in the planner below; carrying it
+                      // lives on the grip, so a press meant to pick a block can no longer
+                      // nudge it a week by accident. Two presses open the dates dialog, the
+                      // same one the ⋯ and the right-click offer.
+                      // The pairing said out loud as well as drawn: without it the bar
+                      // announces as a plain button and its link to the planner below is
+                      // unreachable from here.
+                      aria-current={b.id === selectedBlockId || undefined}
+                      onClick={() => onSelectBlock(b.id)}
+                      onDoubleClick={() => setEditing(b)}
                       className={cn(
                         BLOCK_BAR,
                         // Its type's colour, or the neutral fill when the coach named it in
                         // free text. A type deleted in settings sets this back to null, so
                         // the bar keeps its name and quietly loses its tint.
                         fillFor(typeById.get(b.typeId ?? "")),
-                        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-gray-1000)]",
+                        "group/bar cursor-pointer touch-none pl-1.5",
+                        FOCUS_RING,
+                        b.id === selectedBlockId && SELECTED_BAR,
                         // Lifted while it is being carried, outlined in red the moment it is
                         // over a week it can't have — the same answer-during-the-gesture the
-                        // macro bracket gives, so the toast on release only confirms it.
+                        // macro band gives, so the toast on release only confirms it.
                         held &&
                           (drop.valid
-                            ? "shadow-[var(--ds-shadow-menu)]"
+                            ? "cursor-grabbing shadow-[var(--ds-shadow-menu)]"
                             : REFUSED_BAR),
                       )}
                     >
-                      <button
-                        type="button"
-                        aria-label={`Move ${b.name}`}
-                        onPointerDown={grab("move")}
-                        // touch-none stops the browser panning the year while the bar is being
-                        // carried. z-10 keeps it out from under the start grip, which is
-                        // absolute and comes later in the row — without it the 24px resize box
-                        // covered the dots, so the one control that says "carry me" answered
-                        // with an ew-resize cursor and resized the block instead.
-                        //
-                        // Pulled left and trimmed until what it takes off the row matches what
-                        // the week count takes off the other end: the name is centred in the
-                        // space between them, so two ornaments of different widths pushed it
-                        // off the bar's own centre. Colour comes from the bar, so the mark
-                        // reads as part of the same object on all eight fills — a fixed grey
-                        // that worked on the neutral one disappeared into a solid green.
-                        // The document-level `grabbing` set for the gesture only shows once
-                        // the pointer is off this button — an element's own cursor wins over
-                        // the body's while it is over it, so the hand stayed open for exactly
-                        // the moment the press happens. `active:` closes it right there.
-                        className="relative z-10 -ml-1.5 shrink-0 cursor-grab touch-none px-0.5 active:cursor-grabbing"
-                      >
-                        <GripIcon className="size-3" />
-                      </button>
+                      {/* The handle, ahead of the name and always on the bar: what can be
+                          dragged says so before the pointer arrives. It stacks over the start
+                          resize grip it sits inside — that grip keeps the 6px left of the dots
+                          and the dots own their own width, which is the trade for a move
+                          handle that is visible at rest. touch-none stops the browser panning
+                          the year instead of moving the block. */}
                       <span
-                        className="min-w-0 flex-1 truncate text-center font-bold"
+                        aria-hidden
+                        title="Drag to move"
+                        onPointerDown={grab("move")}
+                        className="relative z-10 shrink-0 cursor-grab touch-none opacity-60 transition-opacity group-hover/bar:opacity-100"
+                      >
+                        <GripIcon className="size-3.5" />
+                      </span>
+                      <span
+                        className="min-w-0 flex-1 truncate font-medium"
                         title={b.name}
                       >
                         {b.name}
                       </span>
-                      {/* The same menu the right-click opens, on a control that says it is
-                          there — the count that used to sit here was information the bar's
-                          own width already gave, and the actions had no visible way in on a
-                          trackpad. The length is still spelled out in the bar's aria-label.
-
-                          Mirrors the grip: same 12px glyph, pulled the same 6px into the
-                          bar's padding, so the two ornaments take about the same width off
-                          their ends and the name stays centred between them.
-
-                          A 20px grey disc on hover, and the same disc held while the menu is
-                          open. The fill is `gray-alpha`, not a solid grey: it is a wash over
-                          whatever colour the bar is, so it darkens the light fills and
-                          lightens the dark ones instead of vanishing into one of the eight. */}
-                      <DotsMenu
-                        align="end"
-                        items={blockMenu(b)}
-                        label={`Options for ${b.name}`}
-                        size="md"
-                        triggerClassName="relative z-10 -mr-1.5 size-5 shrink-0 rounded-full text-current"
-                      />
+                      {/* The same menu the right-click opens, on a control that shows itself
+                          only when the bar is hovered or focused: a bar wears its name and
+                          nothing else until it is asked. The wrapper keeps the press off the
+                          bar's own drag. */}
+                      <span
+                        onPointerDown={(e) => e.stopPropagation()}
+                        className="-mr-1.5 shrink-0 opacity-0 transition-opacity group-hover/bar:opacity-100 focus-within:opacity-100"
+                      >
+                        <DotsMenu
+                          align="end"
+                          items={blockMenu(b)}
+                          label={`Options for ${b.name}`}
+                          size="md"
+                          triggerClassName="relative z-10 size-5 shrink-0 rounded-full text-current"
+                        />
+                      </span>
 
                       {/* Edge grips. Withheld on a block the year cuts in half: its hidden weeks
                           aren't on screen to drag, so resizing from the visible part would
@@ -2055,23 +2474,11 @@ export function YearCalendar({
               );
             })}
 
-            {/* Holds the macro row open, for the same reason the block row has one: the first
-                bracket would otherwise grow the card the moment a hover offered it. */}
-            <div
-              aria-hidden
-              className={cn(
-                BRACKET_SLOT,
-                BRACKET_SLIDE,
-                "pointer-events-none",
-              )}
-              style={{ gridRow: MACRO_ROW, gridColumn: 1, transform: lift }}
-            />
-
             {shown.map(({ macro, first, last }) => {
               const from = bars[first];
               const to = bars[last];
               const dragging = macroDrag?.id === macro.id;
-              // Follows the pointer in red rather than refusing to move: a bracket that
+              // Follows the pointer in red rather than refusing to move: a caption that
               // ignores the drag reads as broken, one that turns red reads as "not there".
               const refused = dragging && macroDrag.reason !== null;
               return (
@@ -2080,11 +2487,11 @@ export function YearCalendar({
                   style={{
                     gridRow: MACRO_ROW,
                     gridColumn: `${2 + from.start} / span ${to.start + to.span - from.start}`,
-                    transform: lift,
                   }}
-                  className={cn(BRACKET_SLOT, BRACKET_SLIDE)}
+                  className={cn(MACRO_SLOT, "min-w-0")}
                 >
                   <ContextMenu
+                    className="relative"
                     items={[
                       { label: "Rename", onSelect: () => setRenaming(macro) },
                       { separator: true },
@@ -2095,252 +2502,73 @@ export function YearCalendar({
                       },
                     ]}
                   >
-                    <div className="group relative h-6">
-                      {/* Takes the click for the whole bracket. A sibling of the grips rather
-                          than their parent: a resize ends with a mouseup out in the window,
-                          and the click the browser then fires would land on their common
-                          ancestor — opening the rename modal after every drag. */}
-                      <button
-                        type="button"
-                        aria-label={`Rename ${macro.name}`}
-                        onClick={() => setRenaming(macro)}
-                        className="absolute inset-0 cursor-pointer"
-                      />
-                      <div
-                        style={BRACKET_STYLE}
-                        className={cn(
-                          BRACKET,
-                          MACRO_HOVER.line,
-                          dragging && BRACKET_HELD,
-                          refused && "bg-[var(--ds-red-900)]",
-                        )}
-                      />
-                      {(["near", "far"] as const).map((side) => (
-                        <span
-                          key={side}
-                          style={{
-                            ...BRACKET_END_STYLE,
-                            left: bracketEndOffset(
-                              to.start + to.span - from.start,
-                              side,
-                            ),
-                          }}
-                          className={cn(
-                            BRACKET_END,
-                            MACRO_HOVER.end,
-                            dragging && "bg-[var(--ds-gray-1000)]",
-                            refused && "bg-[var(--ds-red-900)]",
-                          )}
-                        />
-                      ))}
-                      <span
-                        className={cn(
-                          MACRO_NAME,
-                          MACRO_HOVER.name,
-                          refused && "text-[var(--ds-red-900)]",
-                        )}
-                        title={macro.name}
-                      >
+                    {/* The caption is the rename control. A sibling of the grips rather than
+                        their parent: a resize ends with a mouseup out in the window, and the
+                        click the browser then fires would land on their common ancestor —
+                        opening the rename modal after every drag. */}
+                    <button
+                      type="button"
+                      aria-label={`Rename ${macro.name}`}
+                      data-plan="macro"
+                      data-from={from.start}
+                      data-to={to.start + to.span - 1}
+                      tabIndex={tab(rowOf("macro"), from.start, to.start + to.span - 1)}
+                      onKeyDown={(e) =>
+                        onKey(e, {
+                          row: rowOf("macro"),
+                          wi: cursor.wi,
+                          macro: { macro, first, last },
+                        })
+                      }
+                      onFocus={land(rowOf("macro"), from.start, to.start + to.span - 1)}
+                      onClick={() => setRenaming(macro)}
+                      className={cn(
+                        MACRO_CAPTION,
+                        MACRO_HOVER,
+                        "w-full",
+                        dragging && MACRO_HELD,
+                        refused && MACRO_REFUSED,
+                      )}
+                    >
+                      <span className="min-w-0 flex-1 truncate text-left" title={macro.name}>
                         {macro.name}
                       </span>
-                      {/* One grip per end. Dragging steps by whole mesos: the edge lands on
-                          the block under the pointer, or stays where it is. */}
-                      {(["start", "end"] as const).map((edge) => (
-                        <span
-                          key={edge}
-                          aria-hidden
-                          onPointerDown={(e) => {
-                            if (e.button !== 0 || drag) return;
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setMacroDrag({
-                              id: macro.id,
-                              edge,
-                              first,
-                              last,
-                              reason: null,
-                            });
-                          }}
-                          className={cn(
-                            // Above the rename button so a grip is never swallowed by it, and
-                            // 24x24 rather than 16x8 — nothing clips this row, so the target
-                            // can grow past the bracket without the tick moving.
-                            "absolute -top-1 z-10 size-6 cursor-ew-resize touch-none",
-                            edge === "start" ? "-left-3" : "-right-3",
-                          )}
-                        />
-                      ))}
-                    </div>
+                      <MacroBracket
+                        className={cn(
+                          MACRO_BRACKET_HOVER,
+                          dragging && MACRO_BRACKET_HELD,
+                          refused && MACRO_BRACKET_REFUSED,
+                        )}
+                      />
+                    </button>
+                    {/* One grip per end. Dragging steps by whole mesos: the edge lands on the
+                        block under the pointer, or stays where it is. */}
+                    {(["start", "end"] as const).map((edge) => (
+                      <span
+                        key={edge}
+                        aria-hidden
+                        onPointerDown={(e) => {
+                          if (e.button !== 0 || drag) return;
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setMacroDrag({
+                            id: macro.id,
+                            edge,
+                            first,
+                            last,
+                            reason: null,
+                          });
+                        }}
+                        className={cn(
+                          "absolute inset-y-0 z-10 w-3 cursor-ew-resize touch-none",
+                          edge === "start" ? "left-0" : "right-0",
+                        )}
+                      />
+                    ))}
                   </ContextMenu>
                 </div>
               );
             })}
-
-            {/* One cell per week of every block: the micro that week has, or the offer of one.
-                Each keeps its own hover group, so only the column under the pointer lights up.
-                The row is always in the grid — that is what keeps the card one fixed height —
-                and the bracket slides over it when there is nothing to show. */}
-            {bars.flatMap((b) =>
-              Array.from({ length: b.span }, (_, i) => {
-                const week = b.start + i;
-                const key = microKey(b.id, week);
-                const stored = microAt.get(key);
-                const local = labels[key];
-                const label = local?.label ?? stored?.label ?? "";
-                const typeId = local ? local.typeId : (stored?.typeId ?? null);
-                const fill = fillFor(typeById.get(typeId ?? ""));
-                const carried =
-                  microGrab?.blockId === b.id && microGrab.from === week;
-                /** The coach's microcycle vocabulary, as menu rows. Picking one stamps the
-                 *  week with its initial and its colour in a single write — the same two
-                 *  things the settings preview showed. */
-                const typeItems = types.micro.map((t) => ({
-                  label: t.name,
-                  onSelect: () =>
-                    writeMicro(b.id, week, microLabel(t.name), t.id),
-                }));
-                return (
-                  <div
-                    key={key}
-                    style={{ gridRow: MICRO_ROW, gridColumn: 2 + week }}
-                    // Being under the block counts as being on it, so the macro's own offer
-                    // shows up alongside this one instead of only over the bar itself.
-                    onPointerEnter={() => setHovered(b.id)}
-                    // mx-0.5 is BLOCK_SLOT's own inset, so two micros side by side end up with
-                    // the same 4px between them as two blocks do; -mt-1 halves the grid's 8px
-                    // row gap so the rows are spaced the same 4px as the columns.
-                    className="group/micro mx-0.5 -mt-1 flex h-8 justify-center"
-                  >
-                    {label ? (
-                      // Right-click offers what typing can't: the coach's own microcycle
-                      // types, which carry a colour a letter can't, and emptying the box,
-                      // which is how a micro is deleted — a 34px chip holding a letter has no
-                      // room for a control that says either.
-                      <ContextMenu
-                        className="w-full"
-                        items={[
-                          ...(typeItems.length
-                            ? [...typeItems, { separator: true }]
-                            : []),
-                          {
-                            label: "Delete microcycle",
-                            destructive: true,
-                            onSelect: () => writeMicro(b.id, week, ""),
-                          },
-                        ]}
-                      >
-                        {/* Not an input any more. A letter typed by hand stood for none of
-                            the coach's microcycles, so the chip could end up reading X in
-                            Intro's colour, a lie stored in the row. The vocabulary is the
-                            only way in, and the menu is where it lives.
-
-                            Still a tab stop: ContextMenu only answers a right-click, so
-                            leaving this as dead text would take changing and deleting a micro
-                            away from the keyboard entirely. Enter opens the very same menu,
-                            aimed at the chip, by raising the event it already listens for. */}
-                        <span
-                          aria-haspopup="menu"
-                          aria-label={`Microcycle ${label}, week ${weeks[week].week}`}
-                          role="button"
-                          tabIndex={0}
-                          // Grabbable on sight: the press picks the chip up, the release drops
-                          // it on whatever week it is over, and the weeks in between shift to
-                          // make room. A press that never travels lands back where it started.
-                          onPointerDown={(e) => {
-                            if (e.button !== 0) return;
-                            e.preventDefault();
-                            setMicroGrab({
-                              blockId: b.id,
-                              from: week,
-                              startX: e.clientX,
-                              delta: 0,
-                            });
-                          }}
-                          style={
-                            carried
-                              ? {
-                                  transform: `translateX(${microGrab.delta * COLUMN_PX}px)`,
-                                }
-                              : undefined
-                          }
-                          onKeyDown={(e) => {
-                            if (e.key !== "Enter" && e.key !== " ") return;
-                            e.preventDefault();
-                            const box = e.currentTarget.getBoundingClientRect();
-                            e.currentTarget.dispatchEvent(
-                              new MouseEvent("contextmenu", {
-                                bubbles: true,
-                                clientX: box.left + box.width / 2,
-                                clientY: box.bottom,
-                              }),
-                            );
-                          }}
-                          className={cn(
-                            MICRO_CHIP,
-                            fill,
-                            // The chip was an input, which honoured h-8 on its own; a span has
-                            // to be told to be a box before it can centre anything in one.
-                            "flex items-center justify-center",
-                            // An open hand on hover says the chip can be picked up; touch-none
-                            // so a drag on a phone carries it instead of panning the year.
-                            "cursor-grab touch-none",
-                            // Carried: over its neighbours, and closed-handed. The document
-                            // owns the cursor for the rest of the gesture, but this is what
-                            // answers the press itself, before the pointer has left the chip.
-                            carried &&
-                              "relative z-20 cursor-grabbing shadow-[var(--ds-shadow-menu)]",
-                          )}
-                        >
-                          {label}
-                        </span>
-                      </ContextMenu>
-                    ) : types.micro.length > 0 ? (
-                      // The coach's own list, searchable, opened by the same click that used
-                      // to stamp a placeholder letter. Typing the first letter and pressing
-                      // Enter is one week planned, which is what makes a year's worth of them
-                      // bearable.
-                      <MicroPicker
-                        aria-label={`Add a microcycle to week ${weeks[week].week}`}
-                        className={cn(
-                          MICRO_GHOST,
-                          "flex items-center justify-center",
-                        )}
-                        onPick={(t) =>
-                          writeMicro(b.id, week, microLabel(t.name), t.id)
-                        }
-                        // Out of the tab order while the row is dark: forty invisible stops
-                        // between the calendar and whatever follows it is a trap, not access.
-                        tabIndex={microRowOpen ? 0 : -1}
-                        types={types.micro}
-                      >
-                        +
-                      </MicroPicker>
-                    ) : (
-                      // Nothing configured yet: the old one-press placeholder, so a coach who
-                      // has never opened settings can still label a week.
-                      <button
-                        type="button"
-                        aria-label={`Add a microcycle to week ${weeks[week].week}`}
-                        // Out of the tab order while the row is dark: forty invisible stops
-                        // between the calendar and whatever follows it is a trap, not access.
-                        tabIndex={microRowOpen ? 0 : -1}
-                        onClick={() => writeMicro(b.id, week, MICRO_DEFAULT)}
-                        className={MICRO_GHOST}
-                      >
-                        +
-                      </button>
-                    )}
-                  </div>
-                );
-              }),
-            )}
-
-            {/* Holds the row at its full height whether or not anything is in it. */}
-            <div
-              aria-hidden
-              style={{ gridRow: MICRO_ROW, gridColumn: 1 }}
-              className="pointer-events-none -mt-1 h-8"
-            />
 
             {/* The offer, for every block with no macro. Always mounted and merely invisible:
                 as a conditional it could never be pointed at, since the macro row holds
@@ -2353,62 +2581,313 @@ export function YearCalendar({
                     style={{
                       gridRow: MACRO_ROW,
                       gridColumn: `${2 + b.start} / span ${b.span}`,
-                      transform: lift,
                     }}
-                    className={cn(
-                      BRACKET_SLOT,
-                      BRACKET_SLIDE,
-                      "opacity-0 transition-opacity hover:opacity-100 focus-within:opacity-100",
-                      // Also shown from the block itself and from its micros: the offer
-                      // belongs to the whole meso, not just to this row.
-                      hovered === b.id && "opacity-100",
-                    )}
+                    className={cn(MACRO_SLOT, "min-w-0")}
                     onPointerEnter={() => setHovered(b.id)}
                   >
                     <button
                       type="button"
                       aria-label={`Start a macrocycle at ${b.name}`}
-                      className={BRACKET_GHOST}
+                      data-plan="macro"
+                      data-from={b.start}
+                      data-to={b.start + b.span - 1}
+                      tabIndex={tab(rowOf("macro"), b.start, b.start + b.span - 1)}
+                      onKeyDown={(e) =>
+                        onKey(e, { row: rowOf("macro"), wi: cursor.wi })
+                      }
+                      onFocus={land(rowOf("macro"), b.start, b.start + b.span - 1)}
                       onClick={() => setNaming(b.id)}
-                    >
-                      <span className={BRACKET_GHOST_LINE} />
-                      {(["near", "far"] as const).map((side) => (
-                        <span
-                          key={side}
-                          style={{
-                            ...BRACKET_END_STYLE,
-                            left: bracketEndOffset(b.span, side),
-                          }}
-                          className={cn(
-                            BRACKET_END,
-                            "bg-[var(--ds-gray-alpha-500)] group-hover:bg-[var(--ds-gray-1000)]",
-                          )}
-                        />
-                      ))}
-                      {/* Says what the dashed line is for. Dropped under three weeks, where
-                          the bar is ~65px and the words would outgrow the bracket. */}
-                      {b.span >= 3 && (
-                        <span
-                          className={cn(
-                            MACRO_NAME,
-                            "text-[var(--ds-gray-700)] group-hover:text-[var(--ds-gray-1000)]",
-                          )}
-                        >
-                          Macro
-                        </span>
+                      className={cn(
+                        MACRO_GHOST,
+                        // Also shown from the block itself and from its micros: the offer
+                        // belongs to the whole meso, not just to this row.
+                        hovered === b.id && "opacity-100",
                       )}
+                    >
+                      {/* Says what the dashed bracket is for. Dropped under three weeks,
+                          where the bar is ~65px and the word would outgrow it. */}
+                      <span className="min-w-0 truncate">
+                        {b.span >= 3 ? (
+                          "Macrocycle"
+                        ) : (
+                          <PlusIcon className="size-3.5" />
+                        )}
+                      </span>
+                      <MacroBracket dashed width={silhouetteWidth(b.span)} />
                     </button>
                   </div>
                 ),
               )}
+
+            {/* One cell per week of every block: the micro that week has, or the offer of one.
+                Each keeps its own hover group, so only the column under the pointer lights up. */}
+            {bars.flatMap((b) =>
+              Array.from({ length: b.span }, (_, i) => {
+                const week = b.start + i;
+                const key = microKey(b.id, week);
+                const stored = microAt.get(key);
+                const local = labels[key];
+                const label = local?.label ?? stored?.label ?? "";
+                const typeId = local ? local.typeId : (stored?.typeId ?? null);
+                const fill = fillFor(typeById.get(typeId ?? ""));
+                const carried =
+                  microGrab?.blockId === b.id && microGrab.from === week;
+                // A week the carried chip is passing over steps one column towards the slot
+                // it vacated. Every week counts, empty ones too: they are places in the
+                // block's list, and the drop will shift them the same way.
+                const displaced =
+                  microGrab?.blockId === b.id &&
+                  !carried &&
+                  (microGrab.delta > 0
+                    ? week > microGrab.from && week <= microGrab.from + microGrab.delta
+                    : week < microGrab.from && week >= microGrab.from + microGrab.delta)
+                    ? -Math.sign(microGrab.delta) * COLUMN_PX
+                    : 0;
+                return (
+                  <div
+                    key={key}
+                    style={{
+                      gridRow: MICRO_ROW,
+                      gridColumn: 2 + week,
+                      transform: displaced ? `translateX(${displaced}px)` : undefined,
+                    }}
+                    // Being under the block counts as being on it, so the macro's own offer
+                    // shows up alongside this one instead of only over the bar itself.
+                    onPointerEnter={() => setHovered(b.id)}
+                    // A chip is both a drag handle and the button that opens its picker. The
+                    // click the browser fires after a drag is swallowed here, on the way down,
+                    // before it can reach the button and open a menu nobody asked for.
+                    onClickCapture={(e) => {
+                      if (!microDragged.current) return;
+                      microDragged.current = false;
+                      e.stopPropagation();
+                    }}
+                    className={cn(
+                      MICRO_SLOT,
+                      "group/micro flex h-6 justify-center",
+                      // Only while a chip is being carried: the slide is what makes the
+                      // neighbours read as making room, and the same transition on the
+                      // drop would have them slide back over the write.
+                      microGrab?.blockId === b.id &&
+                        !carried &&
+                        "transition-transform duration-150 ease-out",
+                    )}
+                  >
+                    {label ? (
+                      // The chip is the picker's own trigger: click it and the coach's
+                      // vocabulary opens as a palette, with a clear swatch at the end — one
+                      // control for setting, changing and clearing a week, and the same one
+                      // the keyboard reaches. Press and move instead, and the chip is carried
+                      // to another week of its block.
+                      <MicroPicker
+                        aria-label={`Microcycle ${label}, week ${weeks[week].week}`}
+                        types={types.micro}
+                        currentId={typeId}
+                        data-plan="micro"
+                        data-from={week}
+                        data-to={week}
+                        tabIndex={tab(rowOf("micro"), week)}
+                        onKeyDown={(e) =>
+                          onKey(e, {
+                            row: rowOf("micro"),
+                            wi: week,
+                            micro: { bar: b, week, label, typeId },
+                          })
+                        }
+                        onFocus={land(rowOf("micro"), week)}
+                        onPick={(t) =>
+                          writeMicro(b.id, week, microLabel(t.name), t.id)
+                        }
+                        onClear={() => writeMicro(b.id, week, "")}
+                        onPointerDown={(e) => {
+                          if (e.button !== 0) return;
+                          e.preventDefault();
+                          setMicroGrab({
+                            blockId: b.id,
+                            from: week,
+                            startX: e.clientX,
+                            dx: 0,
+                            delta: 0,
+                          });
+                        }}
+                        style={
+                          carried
+                            ? { transform: `translateX(${microGrab.dx}px)` }
+                            : undefined
+                        }
+                        className={cn(
+                          MICRO_CHIP,
+                          fill,
+                          "flex items-center justify-center",
+                          // An open hand on hover says the chip can be picked up; touch-none
+                          // so a drag on a phone carries it instead of panning the year.
+                          "cursor-grab touch-none",
+                          // Carried: over its neighbours, and closed-handed.
+                          carried &&
+                            "relative z-20 cursor-grabbing shadow-[var(--ds-shadow-menu)]",
+                        )}
+                      >
+                        {label}
+                      </MicroPicker>
+                    ) : types.micro.length > 0 ? (
+                      // The coach's own palette. Typing the first letter is one week planned,
+                      // which is what makes a year's worth of them bearable.
+                      <MicroPicker
+                        aria-label={`Add a microcycle to week ${weeks[week].week}`}
+                        className={cn(
+                          MICRO_GHOST,
+                          "flex items-center justify-center",
+                        )}
+                        onPick={(t) =>
+                          writeMicro(b.id, week, microLabel(t.name), t.id)
+                        }
+                        data-plan="micro"
+                        data-from={week}
+                        data-to={week}
+                        tabIndex={tab(rowOf("micro"), week)}
+                        onKeyDown={(e) =>
+                          onKey(e, {
+                            row: rowOf("micro"),
+                            wi: week,
+                            micro: { bar: b, week, label: "", typeId: null },
+                          })
+                        }
+                        onFocus={land(rowOf("micro"), week)}
+                        types={types.micro}
+                      >
+                        <DashedBox {...MICRO_GHOST_BOX} />
+                        <PlusIcon className="size-3.5" />
+                      </MicroPicker>
+                    ) : (
+                      // Nothing configured yet: the old one-press placeholder, so a coach who
+                      // has never opened settings can still label a week.
+                      <button
+                        type="button"
+                        aria-label={`Add a microcycle to week ${weeks[week].week}`}
+                        data-plan="micro"
+                        data-from={week}
+                        data-to={week}
+                        tabIndex={tab(rowOf("micro"), week)}
+                        onKeyDown={(e) =>
+                          onKey(e, {
+                            row: rowOf("micro"),
+                            wi: week,
+                            micro: { bar: b, week, label: "", typeId: null },
+                          })
+                        }
+                        onFocus={land(rowOf("micro"), week)}
+                        onClick={() => writeMicro(b.id, week, MICRO_DEFAULT)}
+                        className={MICRO_GHOST}
+                      >
+                        <DashedBox {...MICRO_GHOST_BOX} />
+                        <PlusIcon className="size-3.5" />
+                      </button>
+                    )}
+                  </div>
+                );
+              }),
+            )}
+            {/* The axis column's own ground, from rule to rule. Each M–S header is only as
+                tall as its row, so the 8px between rows left a gap the striped months showed
+                through as the year scrolled under the sticky axis. One opaque band behind all
+                seven closes every gap at once; the headers keep their own z-10 and stay on
+                top of it. */}
+            <div
+              aria-hidden
+              style={{
+                gridRow: `3 / span ${WEEKDAYS.length}`,
+                gridColumn: 1,
+                marginBlock: -MATRIX_CLEAR,
+              }}
+              className="pointer-events-none sticky left-0 bg-[var(--ds-background-100)]"
+            />
+
+            {/* The months, striped. Every other calendar month carries a faint band behind its
+                days so a column reads as belonging to a month without the eye going up to the
+                caption. Grey alpha, no hue: this is grouping, not data — the colour on the plan
+                belongs to the blocks under the matrix.
+
+                Drawn per column and per run of days rather than per month, because a month
+                starts and ends mid-column: the band steps down where October hands over to
+                November, on the day itself. A run always spans contiguous rows, so one grid
+                item covers it and the row gaps inside it. Last in the grid and behind the
+                digits, which have to stay on top of their own band. */}
+            {weeks.flatMap((w, wi) => {
+              const runs: { month: number; first: number; last: number }[] = [];
+              w.days.forEach((date, d) => {
+                const month = date.getMonth();
+                const open = runs.at(-1);
+                if (open?.month === month) open.last = d;
+                else runs.push({ month, first: d, last: d });
+              });
+              return runs
+                .filter((run) => run.month % 2 === 1)
+                .map((run) => (
+                  <div
+                    key={`month-band-${wi}-${run.month}`}
+                    aria-hidden
+                    style={{
+                      gridRow: `${3 + run.first} / span ${run.last - run.first + 1}`,
+                      gridColumn: 2 + wi,
+                      // Out to the rule at the ends of the column, to the middle of the gap
+                      // anywhere else: a stripe that stopped at the chip would read as a row
+                      // of boxes rather than as one month.
+                      marginTop: -(run.first === 0 ? MATRIX_CLEAR : ROW_GAP / 2),
+                      marginBottom: -(
+                        run.last === WEEKDAYS.length - 1 ? MATRIX_CLEAR : ROW_GAP / 2
+                      ),
+                      zIndex: -1,
+                    }}
+                    className="pointer-events-none bg-[var(--ds-gray-alpha-100)]"
+                  />
+                ));
+            })}
             </div>
           </div>
         </Scroller>
 
+        {/* An empty year, explained where its blocks would be. Held to the exact height of
+            the plan rows it covers, so the card is the same size whether the year has blocks
+            or not, and centred in what is on screen: the row it replaces is empty across the
+            whole year, so there is no column for it to line up with.
+
+            Outside the Scroller so it stays put as the year scrolls under it, and pulled up
+            over the plan rows, which keep their height and their keyboard cursor even with
+            nothing in them.
+
+            No action here: New block sits at the top of the screen and is never more than a
+            glance away. Two buttons for one job would only ask which of them is the real one. */}
+        {bars.length === 0 && !draft && (
+          <div
+            // The plan rows are the floor, not the ceiling: it starts where they start, and
+            // the card grows by whatever air the state needs beyond them rather than packing
+            // it into 104px.
+            style={{ minHeight: PLAN_ROWS, marginTop: -PLAN_ROWS }}
+            className="flex flex-col items-center justify-center gap-3 py-7 text-center"
+          >
+            <div className="flex size-9 items-center justify-center rounded-md border border-[var(--ds-gray-alpha-400)] text-[var(--ds-gray-900)]">
+              <BoxIcon className="size-4" />
+            </div>
+            <div>
+              <p className="text-heading-14 text-[var(--ds-gray-1000)]">
+                No blocks in {year}
+              </p>
+              <p className="mt-1 text-copy-13 text-[var(--ds-gray-900)]">
+                Double-click a week above, then click to set how long it runs.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Both edges, drawn on the card. Placed before the two rules so those stay on top,
             and the leading one starts where the axis ends — the weekday column is permanent,
             so what softens is the week sliding under it. Kept gentle: the edge should suggest
-            more calendar, not wipe a column out. */}
+            more calendar, not wipe a column out.
+
+            It stops at the matrix's lower rule. Running the full height of the card washed the
+            last bar's 12px name along with the digits, and a half-faded name reads as a render
+            that failed rather than as a year that continues; the bars end at the card's own
+            edge instead, which is a clean cut. */}
         {(["start", "end"] as const).map((edge) => (
           <div
             key={edge}
@@ -2417,9 +2896,9 @@ export function YearCalendar({
               [edge === "start" ? "left" : "right"]:
                 edge === "start" ? CARD_PAD_X + AXIS_PX : CARD_PAD_X,
               top: CARD_PAD_TOP,
-              bottom: CARD_PAD_BOTTOM,
+              height: MATRIX_TOP + MATRIX_HEIGHT - CARD_PAD_TOP,
               width: EDGE_FADE,
-              background: `linear-gradient(to ${edge === "start" ? "right" : "left"}, color-mix(in srgb, var(--ds-background-100) 82%, transparent) 0%, transparent 100%)`,
+              background: `linear-gradient(to ${edge === "start" ? "right" : "left"}, color-mix(in srgb, var(--ds-background-100) 70%, transparent) 0%, transparent 100%)`,
             }}
             className={cn(
               "pointer-events-none absolute transition-opacity duration-200",
@@ -2427,27 +2906,6 @@ export function YearCalendar({
             )}
           />
         ))}
-
-        {/* An overlay scrollbar, not the native one: `scrollbar-width` takes real space, so
-            revealing it on hover would push the calendar up by its own height. This one is
-            painted over the card, appears with the pointer and can be dragged. It starts past
-            the axis, which does not scroll. */}
-        <div
-          style={{ left: CARD_PAD_X + AXIS_PX, right: CARD_PAD_X }}
-          onPointerDown={grabBar}
-          className={cn(
-            "group/bar absolute bottom-0.5 h-2 cursor-pointer transition-opacity duration-200",
-            nearBar || carrying ? "opacity-100" : "opacity-0 pointer-events-none",
-          )}
-        >
-          <div
-            style={{
-              left: `${thumb.left * 100}%`,
-              width: `${Math.max(thumb.width, 0.04) * 100}%`,
-            }}
-            className="absolute bottom-0 h-0.5 rounded-full bg-[var(--ds-gray-alpha-500)] transition-colors group-hover/bar:bg-[var(--ds-gray-alpha-700)]"
-          />
-        </div>
 
         {/* The two rules bracketing the day matrix. They hang off the card rather than the grid so
             they reach both edges — inside the Scroller they would be cut to the 1825px year and
@@ -2604,6 +3062,9 @@ function MacroNameModal({
       }
     >
       <form
+        // The gap spaces the fields, the way BlockModal's does. A margin on the Select
+        // instead lands on the control itself and drags its chevron off centre.
+        className="flex flex-col gap-5"
         onSubmit={(e) => {
           e.preventDefault();
           submit();
@@ -2611,7 +3072,6 @@ function MacroNameModal({
       >
         {types.length > 0 && (
           <Select
-            className="mb-5"
             label="Macrocycle"
             placeholder="No type"
             value={typeId}

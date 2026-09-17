@@ -17,6 +17,7 @@ Training planner for coaches and athletes. Full architecture spec: `/home/diego/
 
 ## UI rules (MANDATORY)
 
+- **Always use the `impeccable` skill** for any frontend design or redesign work (layout, hierarchy, polish, motion, accessibility) before/while building.
 - **Always use the `geist-design-system` skill** (`~/.claude/skills/geist-design-system/`) when creating, editing, or redesigning any UI component.
 - Before using a component: read its `references/<name>.md` in the skill, then copy the source from the skill's `assets/components/ui/` into `src/components/ui/` along with the internal deps the reference lists.
 - Colors only via `--ds-*` tokens or semantic tokens (`bg-background`, `text-foreground`, …). Never hardcoded hex, never `dark:` overrides for token colors.

@@ -55,26 +55,32 @@ async function client() {
   return { supabase, user };
 }
 
+/** Returns the new row's id: a coach who adds a type from the block form is adding it in order
+ *  to use it, and the form selects it the moment it exists. */
 export async function createCycleType(
   input: CycleTypeInput,
-): Promise<ActionResult> {
+): Promise<ActionResult & { id?: string }> {
   const { supabase, user } = await client();
   if (!user) return { error: "Not authenticated." };
 
   const invalid = validate(input);
   if (invalid) return { error: invalid };
 
-  const { error } = await supabase.from("cycle_types").insert({
-    coach_id: user.id,
-    tier: input.tier,
-    name: input.name.trim(),
-    description: input.description.trim(),
-    color: input.color,
-  });
+  const { data, error } = await supabase
+    .from("cycle_types")
+    .insert({
+      coach_id: user.id,
+      tier: input.tier,
+      name: input.name.trim(),
+      description: input.description.trim(),
+      color: input.color,
+    })
+    .select("id")
+    .single();
   if (error) return { error: writeError("createCycleType", error, input.tier) };
 
   revalidatePath(SETTINGS_PATH, "page");
-  return {};
+  return { id: data.id };
 }
 
 export async function updateCycleType(

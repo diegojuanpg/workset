@@ -49,4 +49,11 @@ export function Toaster({
   )
 }
 
+/** How long a toast that carries an Undo stays up. Sonner's own default is 4s, which is what
+ *  every toast in the app was getting: long enough to read "Peak I deleted", not long enough
+ *  to notice it, cross the screen to the bottom-right corner and press the one control that
+ *  brings back twenty planned weeks. Ten seconds is for the toasts that are a safety net;
+ *  everything else — plain confirmations, errors — keeps the 4s default. */
+export const UNDO_DURATION = 10_000;
+
 export { toast }

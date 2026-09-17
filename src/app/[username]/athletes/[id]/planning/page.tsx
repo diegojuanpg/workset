@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { YearCalendar } from "@/components/calendar/year-calendar";
+import { PlanningView } from "@/components/calendar/planning-view";
 import {
   getAthleteBlocks,
   getAthleteMacros,
@@ -28,8 +28,8 @@ export default async function AthletePlanningPage({ params }: PlanningPageProps)
   ]);
 
   return (
-    <main className="flex-1 p-6">
-      <YearCalendar
+    <main className="flex flex-1 flex-col gap-8 p-6">
+      <PlanningView
         athleteId={id}
         blocks={blocks}
         competitions={competitions}

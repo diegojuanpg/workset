@@ -32,6 +32,16 @@ const sizeStyles: Record<SelectSize, string> = {
   large: "h-10 rounded-lg text-base",
 }
 
+/** The box the prefix and the chevron centre themselves in: the select's own height, pinned to
+ *  the top of the wrapper. Centring in the wrapper instead looks identical until a caller
+ *  passes a margin through `className` — that lands on the select, the wrapper grows by it, and
+ *  the icons drift down to hang off the bottom edge of the field. */
+const iconRow: Record<SelectSize, string> = {
+  small: "top-0 h-8",
+  medium: "top-0 h-9",
+  large: "top-0 h-10",
+}
+
 export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
   (
     { className, size = "medium", error, label, placeholder, prefix, suffix, disabled, children, value, defaultValue, onChange, id, ...props },
@@ -61,7 +71,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           className="group relative flex w-full items-center"
         >
           {prefix && (
-            <span className="pointer-events-none absolute left-3 z-10 flex items-center text-[var(--ds-gray-900)] transition-colors duration-150 ease-in group-hover:text-[var(--ds-gray-1000)] [&_svg]:size-4">
+            <span className={cn("pointer-events-none absolute left-3 z-10 flex items-center text-[var(--ds-gray-900)] transition-colors duration-150 ease-in group-hover:text-[var(--ds-gray-1000)] [&_svg]:size-4", iconRow[size])}>
               {prefix}
             </span>
           )}
@@ -94,7 +104,9 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             {children}
           </select>
 
-          <span className="pointer-events-none absolute right-3 z-10 flex items-center text-[var(--ds-gray-900)] transition-colors duration-150 ease-in group-hover:text-[var(--ds-gray-1000)] [&_svg]:size-4">
+          {/* Flips while the picker is open. The popup itself is drawn by the browser, so this
+              chevron is the only part of the open state a native select lets us animate. */}
+          <span className={cn("pointer-events-none absolute right-3 z-10 flex items-center text-[var(--ds-gray-900)] transition-[color,transform] duration-150 ease-in peer-[:open]:rotate-180 group-hover:text-[var(--ds-gray-1000)] [&_svg]:size-4", iconRow[size])}>
             {suffix ?? <ChevronDown />}
           </span>
         </div>

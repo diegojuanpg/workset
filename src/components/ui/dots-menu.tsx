@@ -79,8 +79,8 @@ export function DotsMenu({ items, size = "lg", disabled, align = "end", label = 
         }}
         className={cn(
           trigger
-            ? "flex h-8 cursor-pointer select-none items-center rounded-md border border-transparent bg-transparent px-1.5 transition-colors hover:bg-[var(--ds-gray-alpha-100)]"
-            : "flex size-8 items-center justify-center rounded-md border border-transparent bg-transparent text-[var(--ds-gray-1000)] transition-colors cursor-pointer select-none hover:bg-[var(--ds-gray-alpha-200)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent",
+            ? "flex h-8 cursor-pointer select-none items-center rounded-md border border-transparent bg-transparent px-1.5 transition-colors hover:bg-[var(--ds-gray-alpha-100)] focus-visible:outline-none focus-visible:shadow-[var(--ds-focus-ring)]"
+            : "flex size-8 items-center justify-center rounded-md border border-transparent bg-transparent text-[var(--ds-gray-1000)] transition-colors cursor-pointer select-none hover:bg-[var(--ds-gray-alpha-200)] focus-visible:outline-none focus-visible:shadow-[var(--ds-focus-ring)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent",
           (open || active) && (trigger ? "bg-[var(--ds-gray-alpha-100)]" : "bg-[var(--ds-gray-alpha-200)]"),
           triggerClassName
         )}

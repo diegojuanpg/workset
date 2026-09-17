@@ -53,13 +53,18 @@ export const CHIP_CLASS: Record<CycleColor, string> = {
 /** A block or a week with no type behind it. Not `CHIP_CLASS.gray`, which the two shared until
  *  the fills went solid: grey chosen from the palette is a decision and looks like one, while
  *  this is the absence of a decision and stays the quiet alpha fill the calendar was built on.
- *  Painting every untyped bar solid grey would make an empty plan the loudest thing on it. */
+ *  Painting every untyped bar solid grey would make an empty plan the loudest thing on it.
+ *
+ *  What it does carry is a 1px edge. The fill alone is 1.19:1 against the card, so a bar with
+ *  no type read as a gap in the surface rather than as the object the whole row is about —
+ *  quietest of the three marks, but still a thing with a shape. */
 export const NEUTRAL_CHIP =
-  "bg-[var(--ds-gray-alpha-200)] text-[var(--ds-gray-1000)]";
+  "bg-[var(--ds-gray-alpha-200)] text-[var(--ds-gray-1000)] shadow-[inset_0_0_0_1px_var(--ds-gray-alpha-500)]";
 
 /** The fill a mark on the plan carries: its type's colour, or the neutral one when the coach
  *  never picked a type for it. One place, so a block, a week and a settings preview can never
- *  disagree about what "no type" looks like. */
+ *  disagree about what "no type" looks like. Macrocycles never call this: they are drawn as a
+ *  grey band and carry no colour. */
 export function fillFor(type: CycleType | undefined): string {
   return type ? CHIP_CLASS[type.color] : NEUTRAL_CHIP;
 }

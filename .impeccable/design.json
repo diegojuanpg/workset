@@ -1,0 +1,353 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-16T00:00:00.000Z",
+  "title": "Design System: Workset",
+  "extensions": {
+    "colorMeta": {
+      "ink": {
+        "role": "primary",
+        "displayName": "Ink",
+        "canonical": "rgb(23, 23, 23)",
+        "cssVar": "--ds-gray-1000",
+        "darkValue": "rgb(237, 237, 237)",
+        "tonalRamp": [
+          "rgb(23, 23, 23)",
+          "rgb(77, 77, 77)",
+          "rgb(125, 125, 125)",
+          "rgb(143, 143, 143)",
+          "rgb(168, 168, 168)",
+          "rgb(201, 201, 201)",
+          "rgb(235, 235, 235)",
+          "rgb(242, 242, 242)"
+        ]
+      },
+      "muted-ink": {
+        "role": "secondary",
+        "displayName": "Muted Ink",
+        "canonical": "rgb(77, 77, 77)",
+        "cssVar": "--ds-gray-900",
+        "darkValue": "rgb(161, 161, 161)"
+      },
+      "faint-ink": {
+        "role": "secondary",
+        "displayName": "Faint Ink",
+        "canonical": "rgb(143, 143, 143)",
+        "cssVar": "--ds-gray-700",
+        "darkValue": "rgb(112, 112, 112)"
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Surface",
+        "canonical": "rgb(255, 255, 255)",
+        "cssVar": "--ds-background-100",
+        "darkValue": "rgb(10, 10, 10)"
+      },
+      "page": {
+        "role": "neutral",
+        "displayName": "Page",
+        "canonical": "rgb(250, 250, 250)",
+        "cssVar": "--ds-background-200",
+        "darkValue": "rgb(0, 0, 0)"
+      },
+      "subtle-fill": {
+        "role": "neutral",
+        "displayName": "Subtle Fill",
+        "canonical": "rgb(242, 242, 242)",
+        "cssVar": "--ds-gray-100",
+        "darkValue": "rgb(26, 26, 26)"
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "rgba(0, 0, 0, 0.08)",
+        "cssVar": "--ds-gray-alpha-400",
+        "darkValue": "rgba(255, 255, 255, 0.14)"
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Border",
+        "canonical": "rgb(235, 235, 235)",
+        "cssVar": "--ds-gray-400",
+        "darkValue": "rgb(46, 46, 46)"
+      },
+      "vercel-blue": {
+        "role": "primary",
+        "displayName": "Vercel Blue",
+        "canonical": "rgb(0, 114, 245)",
+        "cssVar": "--ds-blue-700",
+        "darkValue": "rgb(0, 114, 245)",
+        "tonalRamp": [
+          "rgb(0, 37, 77)",
+          "rgb(0, 104, 214)",
+          "rgb(0, 98, 209)",
+          "rgb(0, 114, 245)",
+          "rgb(82, 174, 255)",
+          "rgb(153, 206, 255)",
+          "rgb(204, 230, 255)",
+          "rgb(240, 247, 255)"
+        ]
+      },
+      "danger-red": {
+        "role": "tertiary",
+        "displayName": "Danger Red",
+        "canonical": "rgb(203, 42, 47)",
+        "cssVar": "--ds-red-900",
+        "darkValue": "rgb(255, 97, 102)",
+        "tonalRamp": [
+          "rgb(57, 20, 23)",
+          "rgb(203, 42, 47)",
+          "rgb(218, 47, 53)",
+          "rgb(229, 72, 77)",
+          "rgb(248, 114, 117)",
+          "rgb(248, 185, 185)",
+          "rgb(253, 216, 216)",
+          "rgb(255, 240, 240)"
+        ]
+      },
+      "warning-amber": {
+        "role": "tertiary",
+        "displayName": "Warning Amber",
+        "canonical": "rgb(255, 178, 36)",
+        "cssVar": "--ds-amber-700",
+        "darkValue": "rgb(255, 178, 36)",
+        "tonalRamp": [
+          "rgb(78, 32, 9)",
+          "rgb(163, 82, 0)",
+          "rgb(255, 153, 10)",
+          "rgb(255, 178, 36)",
+          "rgb(245, 176, 71)",
+          "rgb(255, 201, 107)",
+          "rgb(255, 221, 143)",
+          "rgb(255, 246, 230)"
+        ]
+      },
+      "success-green": {
+        "role": "tertiary",
+        "displayName": "Success Green",
+        "canonical": "rgb(41, 122, 58)",
+        "cssVar": "--ds-green-900",
+        "darkValue": "rgb(98, 192, 115)",
+        "tonalRamp": [
+          "rgb(27, 49, 30)",
+          "rgb(41, 122, 58)",
+          "rgb(57, 142, 74)",
+          "rgb(69, 165, 87)",
+          "rgb(108, 218, 117)",
+          "rgb(153, 230, 158)",
+          "rgb(198, 241, 199)",
+          "rgb(239, 251, 239)"
+        ]
+      },
+      "data-teal": {
+        "role": "tertiary",
+        "displayName": "Data Teal",
+        "canonical": "rgb(6, 122, 110)",
+        "cssVar": "--ds-teal-900",
+        "darkValue": "rgb(10, 199, 180)",
+        "tonalRamp": [
+          "rgb(7, 60, 52)",
+          "rgb(6, 122, 110)",
+          "rgb(13, 140, 125)",
+          "rgb(18, 165, 148)",
+          "rgb(69, 222, 197)",
+          "rgb(134, 234, 217)",
+          "rgb(190, 244, 235)",
+          "rgb(238, 252, 249)"
+        ]
+      },
+      "data-purple": {
+        "role": "tertiary",
+        "displayName": "Data Purple",
+        "canonical": "rgb(120, 32, 188)",
+        "cssVar": "--ds-purple-900",
+        "darkValue": "rgb(191, 122, 240)",
+        "tonalRamp": [
+          "rgb(46, 0, 77)",
+          "rgb(120, 32, 188)",
+          "rgb(118, 61, 169)",
+          "rgb(142, 78, 198)",
+          "rgb(191, 137, 236)",
+          "rgb(213, 177, 241)",
+          "rgb(237, 220, 249)",
+          "rgb(249, 240, 255)"
+        ]
+      },
+      "data-pink": {
+        "role": "tertiary",
+        "displayName": "Data Pink",
+        "canonical": "rgb(189, 40, 100)",
+        "cssVar": "--ds-pink-900",
+        "darkValue": "rgb(247, 95, 143)",
+        "tonalRamp": [
+          "rgb(67, 10, 35)",
+          "rgb(189, 40, 100)",
+          "rgb(223, 38, 112)",
+          "rgb(234, 62, 131)",
+          "rgb(238, 135, 167)",
+          "rgb(245, 184, 204)",
+          "rgb(249, 215, 226)",
+          "rgb(255, 235, 245)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "chrome-10": { "displayName": "Chrome 10", "purpose": "El único escalón fuera de la rampa: encabezados de día de semana en una grilla, como los marca el Calendar de Geist (10px, peso 500, uppercase, tracking-wider)." },
+      "display": { "displayName": "Display", "purpose": "Título de página (text-heading-32). El escalón más alto que usa el producto." },
+      "headline": { "displayName": "Headline", "purpose": "Título de sección dentro de una página (text-heading-24)." },
+      "title": { "displayName": "Title", "purpose": "Subsecciones, títulos de card y de modal (text-heading-20 / -16)." },
+      "body": { "displayName": "Body", "purpose": "Tamaño por defecto de la app (text-copy-14). text-copy-16 para el lead, text-copy-13 para secundario denso." },
+      "label": { "displayName": "Label", "purpose": "Chrome de interfaz: chips, ejes, captions, metadatos (text-label-12)." },
+      "button": { "displayName": "Button", "purpose": "Texto de control (text-button-14, peso 500)." },
+      "mono": { "displayName": "Mono", "purpose": "Fechas técnicas, identificadores y valores que alinean en columna (Geist Mono)." }
+    },
+    "shadows": [
+      { "name": "shadow-border", "value": "0 0 0 1px #00000014, 0 0 0 1px var(--ds-background-200)", "purpose": "El borde de un píxel de toda superficie plana. Simulado con box-shadow para que capa correctamente en oscuro." },
+      { "name": "shadow-border-small", "value": "0 0 0 1px #00000014, 0px 2px 2px #0000000a, 0 0 0 1px var(--ds-background-200)", "purpose": "material-small: card apenas levantada, el patrón de las pantallas de auth." },
+      { "name": "shadow-tooltip", "value": "0 0 0 1px #00000014, 0px 1px 1px #00000005, 0px 4px 8px #0000000a", "purpose": "material-tooltip." },
+      { "name": "shadow-menu", "value": "0 0 0 1px #00000014, 0px 1px 1px #00000005, 0px 4px 8px -4px #0000000a, 0px 16px 24px -8px #0000000f", "purpose": "material-menu: menús desplegables y de contexto. El material más usado del producto." },
+      { "name": "shadow-modal", "value": "0 0 0 1px #00000014, 0px 1px 1px #00000005, 0px 8px 16px -4px #0000000a, 0px 24px 32px -8px #0000000f", "purpose": "material-modal: diálogos y command menus." },
+      { "name": "focus-ring", "value": "0 0 0 2px var(--ds-background-100), 0 0 0 4px var(--ds-focus-color)", "purpose": "El único foco del sistema. Nunca se sustituye por un cambio de borde." }
+    ],
+    "motion": [
+      { "name": "ease-geist", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "La curva de todas las entradas de superficie: menús, dots menu, modales." },
+      { "name": "duration-menu", "value": "100ms", "purpose": "Entrada de menús y popovers. Lo suficientemente corto para que no se sienta un retraso." },
+      { "name": "duration-modal", "value": "150ms", "purpose": "Entrada de modales y overlays." },
+      { "name": "duration-state", "value": "150ms", "purpose": "Transiciones de estado en controles (hover, foco, color)." },
+      { "name": "reduced-motion", "value": "animation-duration: 0.01ms; transition-duration: 0.01ms", "purpose": "prefers-reduced-motion apaga toda animación del sistema en globals.css." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" },
+      { "name": "2xl", "value": "1536px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "La acción principal de una pantalla. Invierte con el tema: negro sobre blanco en claro, blanco sobre negro en oscuro.",
+      "html": "<button class=\"ds-btn-primary\">New block</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 10px; border: 1px solid transparent; border-radius: 6px; background: var(--ds-gray-1000, rgb(23,23,23)); color: var(--ds-background-100, #fff); font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif); font-size: 14px; font-weight: 500; line-height: 20px; white-space: nowrap; cursor: pointer; transition: all 150ms ease; } .ds-btn-primary:hover { background: rgba(0,0,0,0.9); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ds-background-100, #fff), 0 0 0 4px var(--ds-focus-color, rgb(0,114,245)); } .ds-btn-primary:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "La acción alternativa: superficie con borde de un píxel, hover al gris sutil.",
+      "html": "<button class=\"ds-btn-secondary\">Cancel</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 10px; border: 1px solid var(--ds-gray-400, rgb(235,235,235)); border-radius: 6px; background: var(--ds-background-100, #fff); color: var(--ds-gray-1000, rgb(23,23,23)); font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif); font-size: 14px; font-weight: 500; line-height: 20px; cursor: pointer; transition: all 150ms ease; } .ds-btn-secondary:hover { background: var(--ds-gray-100, rgb(242,242,242)); } .ds-btn-secondary:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ds-background-100, #fff), 0 0 0 4px var(--ds-focus-color, rgb(0,114,245)); } .ds-btn-secondary:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Tertiary Button",
+      "kind": "button",
+      "refersTo": "button-tertiary",
+      "description": "El botón por defecto dentro de tablas y barras densas: transparente hasta que el puntero llega.",
+      "html": "<button class=\"ds-btn-tertiary\">Edit</button>",
+      "css": ".ds-btn-tertiary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 10px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--ds-gray-1000, rgb(23,23,23)); font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif); font-size: 14px; font-weight: 500; line-height: 20px; cursor: pointer; transition: all 150ms ease; } .ds-btn-tertiary:hover { background: var(--ds-gray-alpha-200, rgba(0,0,0,0.08)); } .ds-btn-tertiary:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ds-background-100, #fff), 0 0 0 4px var(--ds-focus-color, rgb(0,114,245)); }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo de texto con label de 13px encima. El foco es el anillo, nunca un cambio de borde.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-field-label\" for=\"ds-input-name\">Athlete name</label><input class=\"ds-input\" id=\"ds-input-name\" type=\"text\" placeholder=\"Jane Doe\" /></div>",
+      "css": ".ds-field { display: flex; flex-direction: column; font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif); } .ds-field-label { margin-bottom: 8px; font-size: 13px; font-weight: 500; line-height: 16px; color: var(--ds-gray-900, rgb(77,77,77)); } .ds-input { height: 40px; padding: 0 12px; border: none; border-radius: 6px; background: var(--ds-background-100, #fff); color: var(--ds-gray-1000, rgb(23,23,23)); font-family: inherit; font-size: 14px; line-height: 20px; box-shadow: 0 0 0 1px #00000014; transition: box-shadow 150ms ease; } .ds-input::placeholder { color: var(--ds-gray-700, rgb(143,143,143)); } .ds-input:focus { outline: none; box-shadow: 0 0 0 2px var(--ds-background-100, #fff), 0 0 0 4px var(--ds-focus-color, rgb(0,114,245)); } .ds-input:disabled { cursor: not-allowed; background: var(--ds-gray-100, rgb(242,242,242)); }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "material-small: la superficie de contenido del producto. Plana, con borde de un píxel y apenas una sombra.",
+      "html": "<div class=\"ds-card\"><h3 class=\"ds-card-title\">Development 1</h3><p class=\"ds-card-body\">4 semanas · Acumulación · empieza el 6 de octubre</p></div>",
+      "css": ".ds-card { padding: 24px; border-radius: 6px; background: var(--ds-background-100, #fff); box-shadow: 0 0 0 1px #00000014, 0px 2px 2px #0000000a; font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif); } .ds-card-title { margin: 0 0 8px; font-size: 16px; font-weight: 600; line-height: 24px; letter-spacing: -0.32px; color: var(--ds-gray-1000, rgb(23,23,23)); } .ds-card-body { margin: 0; font-size: 14px; font-weight: 400; line-height: 20px; color: var(--ds-gray-900, rgb(77,77,77)); }"
+    },
+    {
+      "name": "Badge (solid)",
+      "kind": "chip",
+      "refersTo": "badge-solid",
+      "description": "Marca una decisión del coach: relleno sólido del color del tipo de ciclo, texto en el color de contraste.",
+      "html": "<span class=\"ds-badge-solid\">Competition</span>",
+      "css": ".ds-badge-solid { display: inline-flex; align-items: center; justify-content: center; padding: 2px 8px; border-radius: 9999px; background: var(--ds-blue-800, rgb(0,98,209)); color: #fff; font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif); font-size: 12px; font-weight: 500; line-height: 16px; font-variant-numeric: tabular-nums; white-space: nowrap; }"
+    },
+    {
+      "name": "Badge (subtle)",
+      "kind": "chip",
+      "refersTo": "badge-subtle",
+      "description": "Marca un estado del sistema: fondo del paso 200, texto del paso 900.",
+      "html": "<span class=\"ds-badge-subtle\">Draft</span>",
+      "css": ".ds-badge-subtle { display: inline-flex; align-items: center; justify-content: center; padding: 2px 8px; border-radius: 9999px; background: var(--ds-gray-200, rgb(235,235,235)); color: var(--ds-gray-1000, rgb(23,23,23)); font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif); font-size: 12px; font-weight: 500; line-height: 16px; font-variant-numeric: tabular-nums; white-space: nowrap; }"
+    },
+    {
+      "name": "Dropdown Menu",
+      "kind": "nav",
+      "refersTo": "menu",
+      "description": "material-menu: radio de 12px, ítems de 32px y hover en el gris alfa. La superficie flotante más usada del producto.",
+      "html": "<div class=\"ds-menu\"><button class=\"ds-menu-item\">Rename</button><button class=\"ds-menu-item\">Duplicate</button><div class=\"ds-menu-sep\"></div><button class=\"ds-menu-item ds-menu-item-danger\">Delete</button></div>",
+      "css": ".ds-menu { display: inline-flex; flex-direction: column; min-width: 180px; padding: 4px; border-radius: 12px; background: var(--ds-background-100, #fff); box-shadow: 0 0 0 1px #00000014, 0px 1px 1px #00000005, 0px 4px 8px -4px #0000000a, 0px 16px 24px -8px #0000000f; font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif); } .ds-menu-item { display: flex; align-items: center; height: 32px; padding: 0 8px; border: none; border-radius: 6px; background: transparent; color: var(--ds-gray-1000, rgb(23,23,23)); font-family: inherit; font-size: 14px; line-height: 20px; text-align: left; cursor: pointer; transition: background 150ms ease; } .ds-menu-item:hover { background: var(--ds-gray-alpha-200, rgba(0,0,0,0.08)); } .ds-menu-item:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ds-background-100, #fff), 0 0 0 4px var(--ds-focus-color, rgb(0,114,245)); } .ds-menu-item-danger { color: var(--ds-red-900, rgb(203,42,47)); } .ds-menu-sep { height: 1px; margin: 4px 0; background: var(--ds-gray-alpha-400, rgba(0,0,0,0.08)); }"
+    },
+    {
+      "name": "Plan Marks (calendar)",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Las tres marcas del calendario anual: caption de macrociclo con su bracket, barra de bloque y chip de microciclo. Tres pesos, una sola jerarquía.",
+      "html": "<div class=\"ds-plan\"><div class=\"ds-plan-bar\">Development 1</div><div class=\"ds-plan-micros\"><span class=\"ds-plan-micro\">I</span><span class=\"ds-plan-micro ds-plan-micro-b\">B</span><span class=\"ds-plan-micro ds-plan-micro-b\">B</span><span class=\"ds-plan-micro ds-plan-micro-a\">A</span></div><div class=\"ds-plan-macro\">Acumulación</div></div>",
+      "css": ".ds-plan { display: flex; flex-direction: column; gap: 4px; width: 200px; font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif); } .ds-plan-bar { display: flex; align-items: center; height: 32px; padding: 0 8px; border-radius: 6px; background: var(--ds-amber-700, rgb(255,178,36)); color: #000; font-size: 12px; font-weight: 500; line-height: 16px; white-space: nowrap; overflow: hidden; } .ds-plan-micros { display: flex; gap: 4px; } .ds-plan-micro { display: flex; align-items: center; justify-content: center; width: 30px; height: 24px; border-radius: 4px; background: var(--ds-amber-700, rgb(255,178,36)); color: #000; font-size: 12px; font-weight: 500; line-height: 16px; } .ds-plan-micro-b { background: var(--ds-red-900, rgb(203,42,47)); color: #fff; } .ds-plan-micro-a { background: var(--ds-blue-800, rgb(0,98,209)); color: #fff; } .ds-plan-macro { position: relative; padding-top: 6px; border-top: 1px solid var(--ds-gray-alpha-400, rgba(0,0,0,0.08)); font-size: 12px; line-height: 16px; color: var(--ds-gray-900, rgb(77,77,77)); }"
+    },
+    {
+      "name": "Day Cell (calendar)",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "El chip de día del calendario anual: 32px, plano, con el día de hoy en azul sólido y sin anillo.",
+      "html": "<div class=\"ds-days\"><span class=\"ds-day\">5</span><span class=\"ds-day\">6</span><span class=\"ds-day ds-day-today\">7</span><span class=\"ds-day ds-day-out\">8</span></div>",
+      "css": ".ds-days { display: flex; gap: 2px; font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif); } .ds-day { display: block; width: 32px; height: 32px; border: 1px solid transparent; border-radius: 4px; color: var(--ds-gray-1000, rgb(23,23,23)); font-size: 14px; line-height: 30px; text-align: center; transition: background 150ms ease; } .ds-day:hover { background: var(--ds-gray-alpha-200, rgba(0,0,0,0.08)); } .ds-day-today { background: var(--ds-blue-800, rgb(0,98,209)); color: #fff; } .ds-day-out { color: var(--ds-gray-700, rgb(143,143,143)); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Vercel for Coaches",
+    "overview": "Workset es un planificador de entrenamiento para coaches de fuerza — powerlifting en primer lugar, halterofilia y disciplinas afines después. Su sistema de diseño no es una interpretación: es un clon fiel de Geist, el sistema de Vercel. Los patrones, los tokens, la tipografía, los materiales y los iconos vienen tal cual de Geist y se usan como Vercel los usa. Cuando aparece una duda de estilo, la respuesta no se inventa: se busca en la skill geist-design-system y se copia.\n\nLa consecuencia de esa fidelidad es un producto que se lee como una herramienta de desarrollador aplicada al entrenamiento: superficies planas, bordes de un píxel, gris casi en todo, y una jerarquía que se resuelve con tamaño y contraste antes que con decoración. El plan del atleta es el único contenido con derecho a color; el resto de la interfaz se aparta.\n\nLa densidad se decide por falta, no por exceso: solo lo esencial en pantalla. Una vista que necesita explicarse con más elementos está mal planteada, no falta de espacio. El calendario anual es la excepción justificada — es un instrumento de lectura, y ahí la información se compacta a propósito — pero incluso ahí cada marca existe porque codifica un dato del plan.",
+    "keyCharacteristics": [
+      "Fidelidad literal a Geist: componentes copiados desde la skill, nunca reestilizados",
+      "Neutro por defecto; el color es dato, no adorno",
+      "Superficies planas con borde de un píxel simulado por sombra, sin elevación decorativa",
+      "Geist Sans en toda la jerarquía, con tracking negativo en headings y peso 400 en el cuerpo",
+      "Minimalismo por sustracción: lo esencial en pantalla, nada más",
+      "Un solo juego de tokens que se voltea entre claro y oscuro sin overrides"
+    ],
+    "rules": [
+      { "name": "The Token-Only Rule", "body": "Ningún color se escribe como hex, rgb() u oklch() dentro de un componente. Solo var(--ds-*) o los tokens semánticos (bg-background, text-foreground, text-muted-foreground, border-border). Un literal de color en un .tsx es un bug.", "section": "colors" },
+      { "name": "The No-Dark-Override Rule", "body": "Nunca se escribe dark: para un color basado en token: la clase .dark ya lo voltea. La regla gobierna el código propio. Dos excepciones, ambas del propio Geist: los rellenos sólidos de la paleta de ciclos (CHIP_CLASS en src/lib/cycles/types.ts), y los dark: que ya traen los componentes copiados de la skill y se usan tal cual (modal.tsx hunde cuerpo y footer a --ds-background-200 solo en oscuro).", "section": "colors" },
+      { "name": "The Grouping-Is-A-Ground Rule", "body": "Agrupar se marca con un fondo alfa, nunca con el color de la tinta. El color del texto ya codifica jerarquía (1000 principal, 900 secundario) y pertenencia al rango (700 fuera de él): alternarlo por grupo le daría dos significados al mismo token.", "section": "colors" },
+      { "name": "The Step Rule", "body": "El paso dice el trabajo: 100–200 fondos sutiles, 300–400 bordes, 500–600 bordes de alto contraste, 700 relleno sólido y acento, 800 hover del sólido, 900 texto secundario, 1000 texto principal.", "section": "colors" },
+      { "name": "The Utility-Only Rule", "body": "La tipografía se aplica con las utilidades de Geist, nunca con un text-xl font-bold ad hoc. Si un tamaño no existe en la escala, no se necesita ese tamaño.", "section": "typography" },
+      { "name": "The 500 Rule", "body": "El peso 700 no se usa. <strong> dentro de cualquier utilidad de Geist sube a 500, los headings son 600 y los botones 500. Un 700 en pantalla es un error de sistema, no un énfasis.", "section": "typography" },
+      { "name": "The Essential-Only Rule", "body": "Antes de agregar un elemento a una pantalla, se quita otro. Una vista de Workset muestra lo que el coach necesita para decidir, y nada que solo llene espacio.", "section": "layout" },
+      { "name": "The Own-Scroller Rule", "body": "Ninguna superficie ancha empuja el scroll horizontal de la página: se envuelve en Scroller y se desplaza dentro de su propio marco.", "section": "layout" },
+      { "name": "The Material-Or-Nothing Rule", "body": "Una superficie flotante usa su material. No se componen sombras a mano ni se mezclan shadow-* de Tailwind con tokens de Geist.", "section": "elevation" },
+      { "name": "The Flat-At-Rest Rule", "body": "En reposo, todo es plano. La sombra es respuesta a un estado — abierto, arrastrado, enfocado — no una propiedad decorativa de la superficie.", "section": "elevation" },
+      { "name": "The Radius-By-Role Rule", "body": "El radio lo decide qué es la cosa, no cómo queda: 6px si es un control, 12px si flota. Un menú con 6px o un botón con 12px están mal, aunque se vean bien.", "section": "shapes" }
+    ],
+    "dos": [
+      "Do leer references/<componente>.md de la skill Geist antes de usar un componente, y copiar el archivo más las dependencias internas que liste a src/components/ui/.",
+      "Do usar solo var(--ds-*) o los tokens semánticos para color; la clase .dark hace el resto.",
+      "Do aplicar tipografía con text-heading-*, text-copy-*, text-label-* y text-button-*.",
+      "Do dar superficie con las utilidades material-*, eligiendo el material por lo que la cosa es (menú, tooltip, modal).",
+      "Do tomar los iconos de assets/components/icons.tsx de la skill, buscándolos por nombre con grep y sin leer el archivo entero (9k líneas).",
+      "Do mantener el ritmo de 4px y las alturas de control de Geist (24 / 32 / 36 / 40px).",
+      "Do quitar antes de agregar: si una vista necesita un elemento más para entenderse, revisar primero qué sobra.",
+      "Do dejar que el color signifique algo — tipo de ciclo, estado, error — y que el resto sea gris."
+    ],
+    "donts": [
+      "Don't escribir un color literal (hex, rgb(), oklch()) dentro de un componente.",
+      "Don't escribir dark: para un color basado en token; el token ya voltea.",
+      "Don't reestilizar un componente copiado de la skill para que quede mejor: se componen las variantes documentadas.",
+      "Don't usar peso 700 ni tamaños de texto fuera de la escala de Geist.",
+      "Don't inventar sombras ni mezclar shadow-* de Tailwind con los materiales.",
+      "Don't usar iconos de lucide, caracteres unicode (→, ×, ✓) ni SVG dibujados a mano cuando el icono existe en el set de Geist.",
+      "Don't dibujar el foco como un cambio de borde; el anillo de foco es --ds-focus-ring.",
+      "Don't llenar una pantalla con elementos decorativos, ilustraciones de relleno o métricas que el coach no va a usar."
+    ]
+  }
+}
