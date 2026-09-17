@@ -9,7 +9,7 @@ export interface ClipMicro {
   typeId: string | null;
 }
 
-export interface ClipBlock {
+interface ClipBlock {
   name: string;
   typeId: string | null;
   span: number;

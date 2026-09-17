@@ -52,14 +52,14 @@ function dashUnits(length: number, closed: boolean): number {
 export function DashedBox({
   width,
   height,
-  radius = 6,
   className,
 }: {
   width: number;
   height: number;
-  radius?: number;
   className?: string;
 }) {
+  // Every silhouette on the plan is a bar or a chip, and both are rounded-md.
+  const radius = 6;
   // The stroke is centred on the path, so the path sits half a pixel in from every edge.
   const w = width - 1;
   const h = height - 1;

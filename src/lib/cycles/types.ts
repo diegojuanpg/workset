@@ -58,7 +58,7 @@ export const CHIP_CLASS: Record<CycleColor, string> = {
  *  What it does carry is a 1px edge. The fill alone is 1.19:1 against the card, so a bar with
  *  no type read as a gap in the surface rather than as the object the whole row is about —
  *  quietest of the three marks, but still a thing with a shape. */
-export const NEUTRAL_CHIP =
+const NEUTRAL_CHIP =
   "bg-[var(--ds-gray-alpha-200)] text-[var(--ds-gray-1000)] shadow-[inset_0_0_0_1px_var(--ds-gray-alpha-500)]";
 
 /** The fill a mark on the plan carries: its type's colour, or the neutral one when the coach

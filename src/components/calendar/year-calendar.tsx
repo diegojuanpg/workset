@@ -10,6 +10,7 @@ import {
   GripIcon,
   PlusIcon,
 } from "@/components/icons";
+import { formatRange } from "@/lib/competitions/dates";
 import { monthSpans, yearWeeks } from "@/lib/calendar/year";
 import {
   blockSpan,
@@ -403,7 +404,10 @@ const STICKY = "sticky left-0 z-10 bg-[var(--ds-background-100)]";
 function dayTone(date: Date, year: number): string {
   return date.getFullYear() === year
     ? "text-[var(--ds-gray-1000)]"
-    : "text-[var(--ds-gray-700)]";
+    : // gray-900, not 700: at 14px the lighter step came out 3.23:1 on a white card, under
+      // the 4.5:1 floor. These are real dates a coach reads — the tail of December and the
+      // head of January — so they step back, they don't dissolve.
+      "text-[var(--ds-gray-900)]";
 }
 
 /** Whole weeks from one yyyy-mm-dd to another, signed. Both are Mondays, so rounding is what
@@ -1133,8 +1137,9 @@ export function YearCalendar({
       toast.error(why);
       return;
     }
-    // Silent, like the drag it mirrors: the opposite arrow is the undo.
+    // Silent on screen, like the drag it mirrors: the opposite arrow is the undo.
     setCursor((c) => ({ ...c, wi: c.wi + d }));
+    setSaid(`${bar.name} moved to ${formatRange(to.startsOn, to.endsOn)}`);
     void place(bar, to, { startsOn: bar.startsOn, endsOn: bar.endsOn });
   }
 
@@ -1149,6 +1154,8 @@ export function YearCalendar({
       toast.error(why);
       return;
     }
+    const span = bar.span + d;
+    setSaid(`${bar.name}, ${span} ${span === 1 ? "week" : "weeks"}`);
     void place(bar, to, { startsOn: bar.startsOn, endsOn: bar.endsOn });
   }
 
@@ -1522,6 +1529,11 @@ export function YearCalendar({
   /** Whether today's week is on screen, read back after a resize to decide whether recentring
    *  would be putting the view back or taking it away. */
   const onToday = React.useRef(true);
+  /** What the keyboard just did, for anyone who can't see it happen. Moving and resizing a
+   *  block are deliberately silent on screen — the bar itself is the feedback, and the
+   *  opposite arrow is the undo — but a bar that changes under a cursor that never left it
+   *  is announced by no screen reader, since only its own label changed. */
+  const [said, setSaid] = React.useState("");
   React.useEffect(() => {
     const track = gridRef.current?.closest<HTMLElement>(
       "[data-geist-scroller-container]",
@@ -2387,6 +2399,11 @@ export function YearCalendar({
                       // announces as a plain button and its link to the planner below is
                       // unreachable from here.
                       aria-current={b.id === selectedBlockId || undefined}
+                      // On the bar, not on the name: a one-week block is 30px wide, the grip
+                      // takes 14 of them and the name is squeezed to nothing — and a span of
+                      // zero width can't be hovered, so the only thing that said which block
+                      // it was couldn't be reached.
+                      title={`${b.name} · ${formatRange(b.startsOn, b.endsOn)}`}
                       onClick={() => onSelectBlock(b.id)}
                       onDoubleClick={() => setEditing(b)}
                       className={cn(
@@ -2421,10 +2438,7 @@ export function YearCalendar({
                       >
                         <GripIcon className="size-3.5" />
                       </span>
-                      <span
-                        className="min-w-0 flex-1 truncate font-medium"
-                        title={b.name}
-                      >
+                      <span className="min-w-0 flex-1 truncate font-medium">
                         {b.name}
                       </span>
                       {/* The same menu the right-click opens, on a control that shows itself
@@ -2440,7 +2454,9 @@ export function YearCalendar({
                           items={blockMenu(b)}
                           label={`Options for ${b.name}`}
                           size="md"
-                          triggerClassName="relative z-10 size-5 shrink-0 rounded-full text-current"
+                          // 24px, the WCAG 2.5.8 floor. The glyph keeps its 20px box; the
+                          // target around it is what grew.
+                          triggerClassName="relative z-10 size-6 shrink-0 rounded-full text-current"
                         />
                       </span>
 
@@ -2878,6 +2894,16 @@ export function YearCalendar({
             </div>
           </div>
         )}
+
+        {/* What the keyboard just changed, for a reader that can't see the bar move. Polite,
+            so it waits for the current sentence to finish; visually hidden, because on screen
+            the bar moving is the message. */}
+        <p
+          aria-live="polite"
+          className="sr-only"
+        >
+          {said}
+        </p>
 
         {/* Both edges, drawn on the card. Placed before the two rules so those stay on top,
             and the leading one starts where the axis ends — the weekday column is permanent,

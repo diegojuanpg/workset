@@ -13,11 +13,11 @@ export function fromISODate(iso: string): Date {
   return new Date(y, m - 1, d);
 }
 
-export function isMonday(d: Date): boolean {
+function isMonday(d: Date): boolean {
   return d.getDay() === 1;
 }
 
-export function isSunday(d: Date): boolean {
+function isSunday(d: Date): boolean {
   return d.getDay() === 0;
 }
 
