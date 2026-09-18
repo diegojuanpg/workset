@@ -17,43 +17,63 @@ Workset es una app enfocada a entrenadores de powerlifting, halterofilia y bodyb
 idea es tener un entorno que permita planificar el entrenamiento de forma más rápida y un
 ecosistema donde se puedan analizar los datos. La construyo de a poco, en mis tiempos libres.
 
+![Calendario anual](docs/screenshots/year-calendar.png)
+
 ## La app
+
+Todo lo que sigue está grabado sobre la app corriendo.
+
+### Crear cuenta
+
+![Sign up](docs/screenshots/signup.gif)
+
+### El mail con el código
+
+![Código por email](docs/screenshots/otp-email.png)
+
+### Configurar la cuenta
+
+![Onboarding](docs/screenshots/onboarding.gif)
+
+### Iniciar sesión
+
+![Log in](docs/screenshots/login.gif)
+
+### Secciones
+
+![Secciones](docs/screenshots/sections.gif)
+
+### Buscador de atletas
+
+![Buscador](docs/screenshots/find.gif)
+
+### Agregar un atleta
+
+![Agregar atleta](docs/screenshots/add-athlete.gif)
 
 ### Calendario anual
 
-El año completo en una grilla de 53 semanas: días arriba, la banda de bloques abajo, los
-mesociclos coloreados y una letra por semana (Intro, Build, Attack, Recover). La competencia
-marca el día en rojo y el header cuenta cuántas semanas faltan.
-
-![Calendario anual](docs/screenshots/year-calendar.png)
-
-### Dibujar un bloque
-
-Doble click en una semana, el rango sigue al cursor con el mouse suelto, un click lo cierra.
-El modal abre con las fechas y la duración ya resueltas por el gesto. Si el rango pisa otro
-bloque, la app lo dice durante el gesto, antes de abrir un formulario que no va a poder
-guardar.
-
-![Dibujar un bloque](docs/screenshots/draw-block.gif)
+![Calendario anual](docs/screenshots/year-calendar.gif)
 
 ### Competencias
 
-Federación, tipo, categorías y atletas inscriptos por competencia, ordenadas por cuánto falta.
+![Competencias](docs/screenshots/competitions.gif)
 
-![Competencias](docs/screenshots/competitions.png)
+### Configuración
 
-### Ciclos configurables
+![Configuración](docs/screenshots/settings.gif)
 
-Los tipos de macro, meso y microciclo son del coach, no del producto: nombre, descripción y
-color propios, con el preview de cómo van a verse en el calendario.
+### Secciones del atleta
 
-![Configuración de ciclos](docs/screenshots/programming-settings.png)
+![Secciones del atleta](docs/screenshots/athlete-sections.gif)
 
-### Auth sin contraseñas
+### Menú de cuenta
 
-Código de 6 dígitos por email o Google OAuth. No existen contraseñas en el sistema.
+![Menú de cuenta](docs/screenshots/account-menu.gif)
 
-![Login](docs/screenshots/login.png)
+### El atleta entra por el link de invitación
+
+![Alta del atleta](docs/screenshots/athlete-join.gif)
 
 ## Arquitectura
 
@@ -98,45 +118,3 @@ capacidades se derivan de los datos (`profiles.is_coach` y la existencia de una 
 **Invitaciones.** El coach crea al atleta con un nombre temporal y comparte `/join/{token}`.
 El token es single-use, expira a los 7 días, y al reclamarse la fila pendiente se convierte en
 una membresía real sin perder la planificación ya cargada.
-
-## Decisiones que vale la pena mirar
-
-| Decisión | Dónde | Por qué |
-|---|---|---|
-| Dibujar con dos clicks, no arrastrando | `src/components/calendar/year-calendar.tsx` | Mantener el botón apretado a lo largo de 20 columnas es pedirle mucho a una mano, y un resbalón termina el gesto donde la mano aflojó. |
-| El rechazo se responde durante el gesto | `year-calendar.tsx`, `draftRefusal` | Abrir un formulario cuyo botón ya está deshabilitado obliga al coach a adivinar qué hizo mal. |
-| Un solo tab stop para toda la grilla | `year-calendar.tsx`, `tab(d, wi)` | 371 celdas serían 371 paradas de tabulador: una trampa, no accesibilidad. Las flechas caminan la grilla. |
-| Lógica pura separada de React | `src/lib/blocks/`, `src/lib/calendar/` | Semanas, orden, nombres y fechas se testean sin montar un componente. 80 tests, 3s. |
-| El color se nombra, no se escribe | `src/app/geist-*.css`, `DESIGN.md` | Todo sale de tokens `--ds-*`, así que el tema oscuro es el mismo token resuelto distinto y no una segunda hoja de overrides. Los pocos `dark:` que quedan son de los componentes Geist tal como vienen. |
-
-## Correr el proyecto
-
-Requisitos: Node 20+, pnpm y Docker (para el Supabase local).
-
-```bash
-pnpm install
-cp .env.example .env.local
-
-pnpm exec supabase start   # levanta Postgres, Auth, Storage y Mailpit
-# copiar la anon key que imprime a .env.local
-
-pnpm dev                   # http://localhost:3000
-```
-
-Los mails (el código de 6 dígitos incluido) quedan capturados en Mailpit —
-`http://localhost:54324`. Studio en `http://localhost:54323`.
-
-```bash
-pnpm test    # Vitest — 80 tests
-pnpm check   # lint + typecheck + build
-```
-
-## Estado
-
-**Terminado:** auth passwordless, cuentas de atleta con invitaciones, competencias, calendario
-anual con bloques, macro/meso/microciclos y tipos configurables.
-**En curso:** el planner de sesiones dentro de cada semana.
-**Pendiente:** landing pública, biblioteca de ejercicios y mensajería.
-
-El mapa completo del código, feature por feature, está en
-[`docs/project-index.md`](docs/project-index.md).
