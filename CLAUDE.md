@@ -1,6 +1,6 @@
 # Workset
 
-Training planner for coaches and athletes. Full architecture spec: `/home/diego/Projects/eva01/App Architecture and Organization.md` — read it before making stack or structure decisions.
+Training planner for coaches and athletes. Full architecture spec lives outside this repo, in the private `eva01` notes workspace (`App Architecture and Organization.md`) — read it before making stack or structure decisions.
 
 ## Stack
 

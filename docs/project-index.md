@@ -13,7 +13,7 @@ Next.js 16 (App Router, Turbopack) + React 19 + TypeScript strict. Tailwind v4 c
 
 ## Auth
 
-Sistema passwordless completo (spec: `/home/diego/Projects/eva01/Features.md`). Dos métodos: código OTP de 6 dígitos por email, o Google OAuth. No existen contraseñas.
+Sistema passwordless completo (spec: `eva01/Features.md`, workspace privado fuera de este repo). Dos métodos: código OTP de 6 dígitos por email, o Google OAuth. No existen contraseñas.
 
 ### Pantallas
 

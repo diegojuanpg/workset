@@ -5,6 +5,7 @@
   <p><strong>Planificador de entrenamiento de fuerza para coaches y sus atletas.</strong></p>
   <p><em>Proyecto personal. Lo construyo de a poco, en el tiempo que me queda libre.</em></p>
   <p>
+    <a href="https://github.com/diegojuanpg/workset/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/diegojuanpg/workset/actions/workflows/ci.yml/badge.svg" /></a>
     <img alt="Next.js 16" src="https://img.shields.io/badge/Next.js-16-000?logo=nextdotjs&logoColor=white" />
     <img alt="React 19" src="https://img.shields.io/badge/React-19-000?logo=react" />
     <img alt="TypeScript strict" src="https://img.shields.io/badge/TypeScript-strict-000?logo=typescript" />
