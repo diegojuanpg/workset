@@ -119,7 +119,7 @@ una membresía real sin perder la planificación ya cargada.
 | El rechazo se responde durante el gesto | `year-calendar.tsx`, `draftRefusal` | Abrir un formulario cuyo botón ya está deshabilitado obliga al coach a adivinar qué hizo mal. |
 | Un solo tab stop para toda la grilla | `year-calendar.tsx`, `tab(d, wi)` | 371 celdas serían 371 paradas de tabulador: una trampa, no accesibilidad. Las flechas caminan la grilla. |
 | Lógica pura separada de React | `src/lib/blocks/`, `src/lib/calendar/` | Semanas, orden, nombres y fechas se testean sin montar un componente. 80 tests, 3s. |
-| Tokens `--ds-*`, cero hex sueltos | `src/app/geist-*.css`, `DESIGN.md` | El tema oscuro no es un set de overrides `dark:`: es el mismo token resuelto distinto. |
+| El color se nombra, no se escribe | `src/app/geist-*.css`, `DESIGN.md` | Todo sale de tokens `--ds-*`, así que el tema oscuro es el mismo token resuelto distinto y no una segunda hoja de overrides. Los pocos `dark:` que quedan son de los componentes Geist tal como vienen. |
 
 ## Correr el proyecto
 
