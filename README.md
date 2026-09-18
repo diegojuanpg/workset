@@ -1,6 +1,4 @@
 <div align="center">
-  <img src="public/brand/logo-mark-white.svg#gh-dark-mode-only" alt="Workset" width="64" />
-  <img src="public/brand/logo-mark-black.svg#gh-light-mode-only" alt="Workset" width="64" />
   <h1>Workset</h1>
   <p><strong>Planificación de entrenamiento y análisis de datos, en un solo lugar.</strong></p>
   <p>
