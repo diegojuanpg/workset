@@ -2,8 +2,7 @@
   <img src="public/brand/logo-mark-white.svg#gh-dark-mode-only" alt="Workset" width="64" />
   <img src="public/brand/logo-mark-black.svg#gh-light-mode-only" alt="Workset" width="64" />
   <h1>Workset</h1>
-  <p><strong>Planificador de entrenamiento de fuerza para coaches y sus atletas.</strong></p>
-  <p><em>Proyecto personal. Lo construyo de a poco, en el tiempo que me queda libre.</em></p>
+  <p><strong>Planificación de entrenamiento y análisis de datos, en un solo lugar.</strong></p>
   <p>
     <a href="https://github.com/diegojuanpg/workset/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/diegojuanpg/workset/actions/workflows/ci.yml/badge.svg" /></a>
     <img alt="Next.js 16" src="https://img.shields.io/badge/Next.js-16-000?logo=nextdotjs&logoColor=white" />
@@ -16,18 +15,9 @@
 
 ---
 
-Un coach de fuerza planifica la temporada de cada atleta en bloques de semanas: preparación,
-desarrollo, deload, pico de competencia. Hoy eso vive en planillas de Excel que nadie puede
-compartir y que no saben qué es una semana, un mesociclo ni una fecha de competencia.
-
-Workset es esa planificación llevada a una app: un calendario anual donde el bloque es la
-unidad de trabajo, las competencias son fechas fijas alrededor de las cuales se ordena todo, y
-el atleta entra con su propia cuenta a ver lo que le toca.
-
-Es un proyecto personal que vengo construyendo de a poco, a mi ritmo y en el tiempo que me
-queda libre. Sin equipo, sin deadline y sin apuro: cada feature entra cuando está bien
-resuelta. Eso también explica el criterio del código — cuando algo se puede hacer bien o se
-puede hacer rápido, acá se hizo bien.
+Workset es una app enfocada a entrenadores de powerlifting, halterofilia y bodybuilding. La
+idea es tener un entorno que permita planificar el entrenamiento de forma más rápida y un
+ecosistema donde se puedan analizar los datos. La construyo de a poco, en mis tiempos libres.
 
 ## La app
 
@@ -144,8 +134,6 @@ pnpm check   # lint + typecheck + build
 ```
 
 ## Estado
-
-Avanza de a poco, sin fecha de entrega — es lo que hago cuando tengo un rato.
 
 **Terminado:** auth passwordless, cuentas de atleta con invitaciones, competencias, calendario
 anual con bloques, macro/meso/microciclos y tipos configurables.
